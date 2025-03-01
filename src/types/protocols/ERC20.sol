@@ -30,7 +30,7 @@ uint256 constant transferFromSelector =
 // returned, it is a nonzero value (not false).
 //
 // Since the calldata of this is small, we allocate the memory for it in the
-// scratchspace normally used by Solidity for keccak hashing. This reduces
+// scratch space normally used by Solidity for keccak hashing. This reduces
 // overall memory allocations. However, it's worth noting that doing this
 // occupies the first 68 bytes, which overwrites the first four bytes of memory
 // slot `0x40`, which contains the free memory pointer. So we overwrite these
@@ -85,7 +85,7 @@ function transfer(ERC20 token, address receiver, uint256 amount) returns (bool s
 // returned, it is a nonzero value (not false).
 //
 // Since the calldata of this is small, we allocate the memory for it in the
-// scratchspace normally used by Solidity for keccak hashing. This reduces
+// scratch space normally used by Solidity for keccak hashing. This reduces
 // overall memory allocations. However, it's worth noting that doing this
 // occupies the first 100 bytes, which overwrites the free memory pointer and
 // the first four bytes of the zero slot `0x60`. So we overwrite these values

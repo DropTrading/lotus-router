@@ -63,10 +63,8 @@ contract LotusRouter {
     //
     // This contains all of the Lotus Router's execution logic.
     //
-    // We use the fallback function to eschew Solidity's cannonical encoding
-    // scheme. Documentation will be provided for interfacing with this safely.
-    //
-    // > TODO: Provide documentation for interfacing with this safely.
+    // We use the fallback function to eschew Solidity's ABI encoding scheme.
+    // Documentation is be provided for interfacing with this safely.
     fallback() external payable {
         Ptr ptr = findPtr();
         Action action;
