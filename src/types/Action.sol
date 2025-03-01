@@ -18,5 +18,6 @@ enum Action {
     TransferERC6909,
     TransferFromERC6909,
     DepositWETH,
-    WithdrawWETH
+    WithdrawWETH,
+    DynCall
 }

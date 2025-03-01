@@ -572,4 +572,46 @@ contract BBCDecoderTest is Test {
         assertEq(WETH.unwrap(weth), expectedWeth);
         assertEq(value, expectedValue);
     }
+
+    function testDecodeDynCall() public view {
+        bool expectedCanFail = false;
+        address expectedTarget = address(0xaabbccdd);
+        uint256 expectedValue = 0x45;
+        bytes memory expectedData = hex"deadbeef";
+
+        bytes memory encoded = BBCEncoder.encodeDynCall(
+            expectedCanFail,
+            expectedTarget,
+            expectedValue,
+            expectedData
+        );
+
+        (bool canFail, address target, uint256 value, bytes memory data) = decoder.decodeDynCall(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(target, expectedTarget);
+        assertEq(value, expectedValue);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
+
+    function testFuzzDecodeDynCall(
+        bool expectedCanFail,
+        address expectedTarget,
+        uint256 expectedValue,
+        bytes memory expectedData
+    ) public view {
+        bytes memory encoded = BBCEncoder.encodeDynCall(
+            expectedCanFail,
+            expectedTarget,
+            expectedValue,
+            expectedData
+        );
+
+        (bool canFail, address target, uint256 value, bytes memory data) = decoder.decodeDynCall(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(target, expectedTarget);
+        assertEq(value, expectedValue);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
 }

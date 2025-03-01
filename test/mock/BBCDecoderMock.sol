@@ -264,4 +264,34 @@ contract BBCDecoderMock {
 
         (, canFail, weth, value) = ptr.decodeWithdrawWETH();
     }
+
+    function decodeDynCall(bytes calldata encoded)
+    public pure returns (bool canFail, address target, uint256 value, bytes memory data) {
+        Ptr ptr;
+        BytesCalldata packedData;
+
+        assembly {
+            ptr := add(0x01, encoded.offset)
+        }
+
+        (, canFail, target, value, packedData) = ptr.decodeDynCall();
+
+        assembly {
+            let fmp := mload(0x40)
+
+            data := fmp
+
+            let len := shr(0xe0, calldataload(packedData))
+
+            mstore(fmp, len)
+
+            fmp := add(fmp, 0x20)
+
+            calldatacopy(fmp, add(packedData, 0x04), len)
+
+            fmp := add(fmp, len)
+
+            mstore(0x40, fmp)
+        }
+    }
 }

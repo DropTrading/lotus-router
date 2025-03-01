@@ -12,6 +12,7 @@ import { ERC721 } from "src/types/protocols/ERC721.sol";
 import { UniV2Pair } from "src/types/protocols/UniV2Pair.sol";
 import { UniV3Pool } from "src/types/protocols/UniV3Pool.sol";
 import { WETH } from "src/types/protocols/WETH.sol";
+import { dynCall } from "src/types/protocols/Dyn.sol";
 import { BBCDecoder } from "src/util/BBCDecoder.sol";
 
 // +---------------------------------------------------------------------------+
@@ -194,6 +195,15 @@ contract LotusRouter {
                 (ptr, canFail, weth, value) = BBCDecoder.decodeWithdrawWETH(ptr);
 
                 success = weth.withdraw(value) || canFail;
+            } else if (action == Action.DynCall) {
+                bool canFail;
+                address target;
+                uint256 value;
+                BytesCalldata data;
+
+                (ptr, canFail, target, value, data) = BBCDecoder.decodeDynCall(ptr);
+
+                success = dynCall(target, value, data) || canFail;
             } else {
                 success = false;
             }

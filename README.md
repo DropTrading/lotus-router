@@ -65,6 +65,7 @@ Batchable actions:
 - [x] ERC6909 TransferFrom
 - [x] Wrap WETH
 - [x] Unwrap WETH
+- [x] Dynamic Contract Call
 
 Other features:
 

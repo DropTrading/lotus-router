@@ -671,4 +671,55 @@ library BBCDecoder {
             nextPtr := add(nextPtr, nextByteLen)
         }
     }
+
+    // ## Decode Dynamic Contract Call
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - target: The call target address.
+    // - value: The call value.
+    // - data: The call payload.
+    function decodeDynCall(
+        Ptr ptr
+    )
+        internal
+        pure
+        returns (Ptr nextPtr, bool canFail, address target, uint256 value, BytesCalldata data)
+    {
+        assembly {
+            let nextByteLen, nextBitShift
+            nextPtr := ptr
+
+            canFail := shr(u8Shr, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, 0x01)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            target := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            value := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u32Shr, calldataload(nextPtr))
+
+            data := nextPtr
+
+            nextPtr := add(nextPtr, 0x04)
+
+            nextPtr := add(nextPtr, nextByteLen)
+        }
+    }
 }

@@ -9,6 +9,7 @@ import { ERC721Mock } from "test/mock/ERC721Mock.sol";
 import { UniV2PairMock } from "test/mock/UniV2PairMock.sol";
 import { UniV3PoolMock } from "test/mock/UniV3PoolMock.sol";
 import { WETHMock, wethBytecode } from "test/mock/WETHMock.sol";
+import { DynTargetMock } from "test/mock/DynTargetMock.sol";
 
 import { LotusRouter } from "src/LotusRouter.sol";
 import { BBCEncoder } from "src/util/BBCEncoder.sol";
@@ -44,6 +45,8 @@ contract LotusRouterTest is Test {
     ERC6909Mock erc6909_0;
     ERC6909Mock erc6909_1;
     WETHMock weth;
+    DynTargetMock dynTarget_0;
+    DynTargetMock dynTarget_1;
 
     function setUp() public {
         lotus = new LotusRouter();
@@ -58,6 +61,8 @@ contract LotusRouterTest is Test {
         erc6909_0 = new ERC6909Mock();
         erc6909_1 = new ERC6909Mock();
         weth = new WETHMock();
+        dynTarget_0 = new DynTargetMock();
+        dynTarget_1 = new DynTargetMock();
     }
 
     // -- UNIV2 ------------------------------------------------------------------------------------
@@ -2002,7 +2007,242 @@ contract LotusRouterTest is Test {
         vm.stopPrank();
     }
 
-    // -- UTILITIES ----------
+    // -- DYNAMIC ----------------------------------------------------------------------------------
+
+    function testDynCallSingle() public {
+        bool canFail = false;
+        uint256 value = 0x45;
+        bytes memory data = hex"deadbeef";
+
+        vm.deal(address(lotus), value);
+
+        vm.expectCall(address(dynTarget_0), value, data);
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeDynCall(
+                canFail,
+                address(dynTarget_0),
+                value,
+                data
+            )
+        );
+
+        assertTrue(success);
+    }
+
+    function testDynCallSingleThrows() public {
+        bool canFail = false;
+        uint256 value = 0x45;
+        bytes memory data = hex"deadbeef";
+
+        vm.deal(address(lotus), value);
+
+        dynTarget_0.setShouldThrow(true);
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeDynCall(
+                canFail,
+                address(dynTarget_0),
+                value,
+                data
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testDynCallSingleOutOfFunds() public {
+        bool canFail = false;
+        uint256 value = 0x45;
+        bytes memory data = hex"deadbeef";
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeDynCall(
+                canFail,
+                address(dynTarget_0),
+                value,
+                data
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testFuzzDynCallSingle(
+        bool shouldThrow,
+        bool canFail,
+        uint256 value,
+        bytes calldata data
+    ) public {
+        bytes4 dataSelector;
+
+        assembly {
+            dataSelector := shr(0xe0, calldataload(data.offset))
+        }
+
+        vm.assume(dataSelector != DynTargetMock.setShouldThrow.selector);
+
+        dynTarget_0.setShouldThrow(shouldThrow);
+
+        vm.deal(address(lotus), value);
+
+        if (!shouldThrow || canFail) {
+            vm.expectCall(address(dynTarget_0), value, data);
+        }
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeDynCall(
+                canFail,
+                address(dynTarget_0),
+                value,
+                data
+            )
+        );
+
+        assertEq(success, !shouldThrow || canFail);
+    }
+
+    function testDynCallChain() public {
+        bool canFail = false;
+        uint256 value_0 = 0x45;
+        bytes memory data_0 = hex"deadbeef";
+        uint256 value_1 = 0x46;
+        bytes memory data_1 = hex"beefdead";
+
+        vm.deal(address(lotus), value_0 + value_1);
+
+        vm.expectCall(address(dynTarget_0), value_0, data_0);
+        vm.expectCall(address(dynTarget_1), value_1, data_1);
+
+        bool success = lotus.takeAction(
+            abi.encodePacked(
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_0),
+                    value_0,
+                    data_0
+                ),
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_1),
+                    value_1,
+                    data_1
+                )
+            )
+        );
+
+        assertTrue(success);
+    }
+
+    function testDynCallChainThrows() public {
+        bool canFail = false;
+        uint256 value_0 = 0x45;
+        bytes memory data_0 = hex"deadbeef";
+        uint256 value_1 = 0x46;
+        bytes memory data_1 = hex"beefdead";
+
+        dynTarget_0.setShouldThrow(true);
+
+        vm.deal(address(lotus), value_0 + value_1);
+
+        bool success = lotus.takeAction(
+            abi.encodePacked(
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_0),
+                    value_0,
+                    data_0
+                ),
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_1),
+                    value_1,
+                    data_1
+                )
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testDynCallChainOutOfFunds() public {
+        bool canFail = false;
+        uint256 value_0 = 0x45;
+        bytes memory data_0 = hex"deadbeef";
+        uint256 value_1 = 0x46;
+        bytes memory data_1 = hex"beefdead";
+
+        bool success = lotus.takeAction(
+            abi.encodePacked(
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_0),
+                    value_0,
+                    data_0
+                ),
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_1),
+                    value_1,
+                    data_1
+                )
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testFuzzDynCallChain(
+        bool shouldThrow,
+        bool canFail,
+        uint256 value_0,
+        bytes calldata data_0,
+        uint256 value_1,
+        bytes calldata data_1
+    ) public {
+        value_1 = bound(value_1, 0, type(uint256).max - value_0);
+
+        bytes4 dataSelector_0;
+        bytes4 dataSelector_1;
+
+        assembly {
+            dataSelector_0 := shr(0xe0, calldataload(data_0.offset))
+            dataSelector_1 := shr(0xe0, calldataload(data_1.offset))
+        }
+
+        vm.assume(dataSelector_0 != DynTargetMock.setShouldThrow.selector);
+        vm.assume(dataSelector_1 != DynTargetMock.setShouldThrow.selector);
+
+        dynTarget_0.setShouldThrow(shouldThrow);
+
+        vm.deal(address(lotus), value_0 + value_1);
+
+        if (!shouldThrow || canFail) {
+            vm.expectCall(address(dynTarget_0), value_0, data_0);
+            vm.expectCall(address(dynTarget_1), value_1, data_1);
+        }
+
+        bool success = lotus.takeAction(
+            abi.encodePacked(
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_0),
+                    value_0,
+                    data_0
+                ),
+                BBCEncoder.encodeDynCall(
+                    canFail,
+                    address(dynTarget_1),
+                    value_1,
+                    data_1
+                )
+            )
+        );
+
+        assertEq(success, !shouldThrow || canFail);
+    }
+
+    // -- UTILITIES --------------------------------------------------------------------------------
     function assumeReasonableInt256(
         int256 value
     ) internal pure {

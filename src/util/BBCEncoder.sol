@@ -608,6 +608,51 @@ library BBCEncoder {
         return encoded;
     }
 
+    function encodeDynCall(
+        bool canFail,
+        address target,
+        uint256 value,
+        bytes memory data
+    ) internal view returns (bytes memory) {
+        Action action = Action.DynCall;
+        uint8 targetByteLen = byteLen(target);
+        uint8 valueByteLen = byteLen(value);
+        uint256 dataByteLen = data.length;
+
+        bytes memory encoded = new bytes(
+            8 + targetByteLen + valueByteLen + dataByteLen
+        );
+
+        assembly ("memory-safe") {
+            let ptr := add(encoded, 0x20)
+
+            mstore(ptr, shl(0xf8, action))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(0xf8, canFail))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(0xf8, targetByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(0x08, targetByteLen)), target))
+            ptr := add(ptr, targetByteLen)
+
+            mstore(ptr, shl(0xf8, valueByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(0x08, valueByteLen)), value))
+            ptr := add(ptr, valueByteLen)
+
+            mstore(ptr, shl(0xe0, dataByteLen))
+            ptr := add(ptr, 0x04)
+
+            pop(staticcall(gas(), 0x04, add(data, 0x20), dataByteLen, ptr, dataByteLen))
+        }
+
+        return encoded;
+    }
+
     function byteLen(
         uint256 word
     ) internal pure returns (uint8) {
