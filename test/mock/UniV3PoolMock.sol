@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import { IUniV3SwapCallback } from "test/interfaces/IUniV3SwapCallback.sol";
 import { IUniV3FlashCallback } from "test/interfaces/IUniV3FlashCallback.sol";
+import { IUniV3SwapCallback } from "test/interfaces/IUniV3SwapCallback.sol";
 
 contract UniV3PoolMock {
     event Swap(
@@ -13,13 +13,8 @@ contract UniV3PoolMock {
         uint160 sqrtPriceX96,
         bytes data
     );
-    
-    event Flash(
-        address recipient,
-        uint256 amount0,
-        uint256 amount1,
-        bytes data
-    );
+
+    event Flash(address recipient, uint256 amount0, uint256 amount1, bytes data);
 
     bool internal _shouldDoCallback = false;
     bool internal _shouldThrow = false;
@@ -38,10 +33,7 @@ contract UniV3PoolMock {
         _shouldThrow = shouldThrow;
     }
 
-    function setDeltas(
-        int256 amount0Delta,
-        int256 amount1Delta
-    ) public {
+    function setDeltas(int256 amount0Delta, int256 amount1Delta) public {
         _amount0Delta = amount0Delta;
         _amount1Delta = amount1Delta;
     }
@@ -58,11 +50,7 @@ contract UniV3PoolMock {
         emit Swap(msg.sender, recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data);
 
         if (_shouldDoCallback) {
-            IUniV3SwapCallback(msg.sender).uniswapV3SwapCallback(
-                _amount0Delta,
-                _amount1Delta,
-                data
-            );
+            IUniV3SwapCallback(msg.sender).uniswapV3SwapCallback(_amount0Delta, _amount1Delta, data);
         }
     }
 
@@ -77,11 +65,7 @@ contract UniV3PoolMock {
         emit Flash(recipient, amount0, amount1, data);
 
         if (_shouldDoCallback) {
-            IUniV3FlashCallback(msg.sender).uniswapV3FlashCallback(
-                amount0,
-                amount1,
-                data
-            );
+            IUniV3FlashCallback(msg.sender).uniswapV3FlashCallback(amount0, amount1, data);
         }
     }
 }

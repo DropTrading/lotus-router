@@ -57,15 +57,21 @@ contract BBCDecoderMock {
         }
     }
 
-    function decodeSwapUniV3(bytes calldata encoded) public pure returns (
-        bool canFail,
-        UniV3Pool pool,
-        address recipient,
-        bool zeroForOne,
-        int256 amountSpecified,
-        uint160 sqrtPriceLimitX96,
-        bytes memory data
-    ) {
+    function decodeSwapUniV3(
+        bytes calldata encoded
+    )
+        public
+        pure
+        returns (
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            bytes memory data
+        )
+    {
         Ptr ptr;
         BytesCalldata packedData;
 
@@ -74,7 +80,8 @@ contract BBCDecoderMock {
             ptr := add(0x01, encoded.offset)
         }
 
-        (, canFail, pool, recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, packedData) = ptr.decodeSwapUniV3();
+        (, canFail, pool, recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, packedData) =
+            ptr.decodeSwapUniV3();
 
         assembly {
             let fmp := mload(0x40)
@@ -95,14 +102,20 @@ contract BBCDecoderMock {
         }
     }
 
-    function decodeFlashUniV3(bytes calldata encoded) public pure returns (
-        bool canFail,
-        UniV3Pool pool,
-        address recipient,
-        uint256 amount0,
-        uint256 amount1,
-        bytes memory data
-    ) {
+    function decodeFlashUniV3(
+        bytes calldata encoded
+    )
+        public
+        pure
+        returns (
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            uint256 amount0,
+            uint256 amount1,
+            bytes memory data
+        )
+    {
         Ptr ptr;
         BytesCalldata packedData;
 

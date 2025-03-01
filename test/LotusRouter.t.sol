@@ -315,16 +315,15 @@ contract LotusRouterTest is Test {
         uint160 sqrtPriceLimitX96 = 0x03;
         bytes memory data = hex"deadbeef";
 
-        bytes memory innerPayload = 
-            BBCEncoder.encodeSwapUniV3(
-                canFail,
-                address(univ3_1),
-                recipient,
-                zeroForOne,
-                amountSpecified,
-                sqrtPriceLimitX96,
-                data
-            );
+        bytes memory innerPayload = BBCEncoder.encodeSwapUniV3(
+            canFail,
+            address(univ3_1),
+            recipient,
+            zeroForOne,
+            amountSpecified,
+            sqrtPriceLimitX96,
+            data
+        );
 
         univ3_0.setDoCallback(true);
 
@@ -408,16 +407,15 @@ contract LotusRouterTest is Test {
         univ3_0.setShouldThrow(true);
         univ3_0.setDoCallback(true);
 
-        bytes memory innerPayload = 
-            BBCEncoder.encodeSwapUniV3(
-                canFail,
-                address(univ3_1),
-                recipient,
-                zeroForOne,
-                amountSpecified,
-                sqrtPriceLimitX96,
-                data
-            );
+        bytes memory innerPayload = BBCEncoder.encodeSwapUniV3(
+            canFail,
+            address(univ3_1),
+            recipient,
+            zeroForOne,
+            amountSpecified,
+            sqrtPriceLimitX96,
+            data
+        );
 
         bool success = lotus.takeAction(
             BBCEncoder.encodeSwapUniV3(
@@ -445,16 +443,15 @@ contract LotusRouterTest is Test {
         univ3_0.setDoCallback(true);
         univ3_1.setShouldThrow(true);
 
-        bytes memory innerPayload = 
-            BBCEncoder.encodeSwapUniV3(
-                canFail,
-                address(univ3_1),
-                recipient,
-                zeroForOne,
-                amountSpecified,
-                sqrtPriceLimitX96,
-                data
-            );
+        bytes memory innerPayload = BBCEncoder.encodeSwapUniV3(
+            canFail,
+            address(univ3_1),
+            recipient,
+            zeroForOne,
+            amountSpecified,
+            sqrtPriceLimitX96,
+            data
+        );
 
         bool success = lotus.takeAction(
             BBCEncoder.encodeSwapUniV3(
@@ -527,16 +524,14 @@ contract LotusRouterTest is Test {
         uint256 amount1 = 0x46;
         bytes memory data = hex"deadbeef";
 
-        vm.expectCall(address(univ3_0), abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data)));
+        vm.expectCall(
+            address(univ3_0),
+            abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data))
+        );
 
         bool success = lotus.takeAction(
             BBCEncoder.encodeFlashUniV3(
-                canFail,
-                address(univ3_0),
-                recipient,
-                amount0,
-                amount1,
-                data
+                canFail, address(univ3_0), recipient, amount0, amount1, data
             )
         );
 
@@ -552,16 +547,14 @@ contract LotusRouterTest is Test {
 
         univ3_0.setShouldThrow(true);
 
-        vm.expectCall(address(univ3_0), abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data)));
+        vm.expectCall(
+            address(univ3_0),
+            abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data))
+        );
 
         bool success = lotus.takeAction(
             BBCEncoder.encodeFlashUniV3(
-                canFail,
-                address(univ3_0),
-                recipient,
-                amount0,
-                amount1,
-                data
+                canFail, address(univ3_0), recipient, amount0, amount1, data
             )
         );
 
@@ -579,17 +572,15 @@ contract LotusRouterTest is Test {
         univ3_0.setShouldThrow(shouldThrow);
 
         if (!shouldThrow || canFail) {
-            vm.expectCall(address(univ3_0), abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data)));
+            vm.expectCall(
+                address(univ3_0),
+                abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data))
+            );
         }
 
         bool success = lotus.takeAction(
             BBCEncoder.encodeFlashUniV3(
-                canFail,
-                address(univ3_0),
-                recipient,
-                amount0,
-                amount1,
-                data
+                canFail, address(univ3_0), recipient, amount0, amount1, data
             )
         );
 
@@ -1906,7 +1897,9 @@ contract LotusRouterTest is Test {
     }
 
     // -- UTILITIES ----------
-    function assumeReasonableInt256(int256 value) internal pure {
+    function assumeReasonableInt256(
+        int256 value
+    ) internal pure {
         // why? bc `-value` in this exact case overflows :(
         vm.assume(
             value != -57896044618658097711785492504343953926634992332820282019728792003956564819968

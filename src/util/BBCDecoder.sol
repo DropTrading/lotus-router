@@ -92,16 +92,22 @@ library BBCDecoder {
         }
     }
 
-    function decodeSwapUniV3(Ptr ptr) internal pure returns (
-        Ptr nextPtr,
-        bool canFail,
-        UniV3Pool pool,
-        address recipient,
-        bool zeroForOne,
-        int256 amountSpecified,
-        uint160 sqrtPriceLimitX96,
-        BytesCalldata data
-    ) {
+    function decodeSwapUniV3(
+        Ptr ptr
+    )
+        internal
+        pure
+        returns (
+            Ptr nextPtr,
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            BytesCalldata data
+        )
+    {
         assembly {
             let nextByteLen, nextBitShift
             nextPtr := ptr
@@ -152,15 +158,21 @@ library BBCDecoder {
         }
     }
 
-    function decodeFlashUniV3(Ptr ptr) internal pure returns (
-        Ptr nextPtr,
-        bool canFail,
-        UniV3Pool pool,
-        address recipient,
-        uint256 amount0,
-        uint256 amount1,
-        BytesCalldata data
-    ) {
+    function decodeFlashUniV3(
+        Ptr ptr
+    )
+        internal
+        pure
+        returns (
+            Ptr nextPtr,
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            uint256 amount0,
+            uint256 amount1,
+            BytesCalldata data
+        )
+    {
         assembly {
             let nextByteLen, nextBitShift
             nextPtr := ptr

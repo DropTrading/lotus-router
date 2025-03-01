@@ -53,9 +53,11 @@ function execute(Action action, Ptr ptr) returns (Ptr, bool success) {
         uint160 sqrtPriceLimitX96;
         BytesCalldata data;
 
-        (ptr, canFail, pool, recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) = BBCDecoder.decodeSwapUniV3(ptr);
+        (ptr, canFail, pool, recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) =
+            BBCDecoder.decodeSwapUniV3(ptr);
 
-        success = pool.swap(recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) || canFail;
+        success =
+            pool.swap(recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) || canFail;
     } else if (action == Action.FlashUniV3) {
         bool canFail;
         UniV3Pool pool;

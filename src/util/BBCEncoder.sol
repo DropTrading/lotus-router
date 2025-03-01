@@ -113,7 +113,8 @@ library BBCEncoder {
         uint256 dataByteLen = data.length;
 
         bytes memory encoded = new bytes(
-            11 + poolByteLen + recipientByteLen + amountSpecifiedByteLen + sqrtPriceLimitX96ByteLen + dataByteLen
+            11 + poolByteLen + recipientByteLen + amountSpecifiedByteLen + sqrtPriceLimitX96ByteLen
+                + dataByteLen
         );
 
         assembly ("memory-safe") {
@@ -142,7 +143,7 @@ library BBCEncoder {
 
             mstore(ptr, shl(0xf8, amountSpecifiedByteLen))
             ptr := add(ptr, 0x01)
- 
+
             mstore(ptr, shl(sub(0x0100, mul(amountSpecifiedByteLen, 0x08)), amountSpecified))
             ptr := add(ptr, amountSpecifiedByteLen)
 
@@ -629,7 +630,9 @@ library BBCEncoder {
         return 0;
     }
 
-    function byteLen(int256 word) internal pure returns (uint8) {
+    function byteLen(
+        int256 word
+    ) internal pure returns (uint8) {
         uint256 adjusted;
 
         if (word < 0) {
