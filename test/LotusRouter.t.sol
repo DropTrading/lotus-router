@@ -218,6 +218,26 @@ contract LotusRouterTest is Test {
         assertTrue(success);
     }
 
+    function testSwapUniV2Recurse() public {
+        bool canFail = false;
+        uint256 amount0Out = 0x01;
+        uint256 amount1Out = 0x02;
+        address to = address(lotus);
+        bytes memory data = hex"00";
+
+        univ2_0.setDoCallback(true);
+
+        vm.expectCall(
+            address(univ2_0), abi.encodeCall(UniV2PairMock.swap, (amount0Out, amount1Out, to, data))
+        );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV2(canFail, address(univ2_0), amount0Out, amount1Out, to, data)
+        );
+
+        assertTrue(success);
+    }
+
     // -- UNIV3 ------------------------------------------------------------------------------------
 
     function testSwapUniV3Single() public {
