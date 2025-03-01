@@ -587,6 +587,92 @@ contract LotusRouterTest is Test {
         assertEq(success, !shouldThrow || canFail);
     }
 
+    function testFlashUniV3Recurse() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        uint256 amount0 = 0x45;
+        uint256 amount1 = 0x46;
+        bytes memory data = hex"deadbeef";
+
+        univ3_0.setDoCallback(true);
+
+        bytes memory innerPayload = BBCEncoder.encodeFlashUniV3(
+            canFail, address(univ3_1), recipient, amount0, amount1, data
+        );
+
+        vm.expectCall(
+            address(univ3_0),
+            abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, innerPayload))
+        );
+
+        vm.expectCall(
+            address(univ3_1),
+            abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data))
+        );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeFlashUniV3(
+                canFail, address(univ3_0), recipient, amount0, amount1, innerPayload
+            )
+        );
+
+        assertTrue(success);
+    }
+
+    function testFlashUniV3RecurseThrows() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        uint256 amount0 = 0x45;
+        uint256 amount1 = 0x46;
+        bytes memory data = hex"deadbeef";
+
+        univ3_0.setDoCallback(true);
+        univ3_0.setShouldThrow(true);
+
+        bytes memory innerPayload = BBCEncoder.encodeFlashUniV3(
+            canFail, address(univ3_1), recipient, amount0, amount1, data
+        );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeFlashUniV3(
+                canFail, address(univ3_0), recipient, amount0, amount1, innerPayload
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testFuzzFlashUniV3Recurse(
+        bool shouldThrow,
+        bool canFail,
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
+        bytes memory data
+    ) public {
+        bytes memory innerPayload = BBCEncoder.encodeFlashUniV3(
+            canFail, address(univ3_1), recipient, amount0, amount1, data
+        );
+
+        univ3_0.setDoCallback(true);
+        univ3_0.setShouldThrow(shouldThrow);
+
+        if (!shouldThrow || canFail) {
+            vm.expectCall(
+                address(univ3_0),
+                abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, innerPayload))
+            );
+        }
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeFlashUniV3(
+                canFail, address(univ3_0), recipient, amount0, amount1, innerPayload
+            )
+        );
+
+        assertEq(success, !shouldThrow || canFail);
+    }
+
     // -- ERC20 ------------------------------------------------------------------------------------
 
     function testTransferERC20Single() public {

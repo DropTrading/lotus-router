@@ -178,7 +178,7 @@ library BBCEncoder {
         uint256 dataByteLen = data.length;
 
         bytes memory encoded = new bytes(
-            11 + poolByteLen + recipientByteLen + amount0ByteLen + amount1ByteLen + dataByteLen
+            10 + poolByteLen + recipientByteLen + amount0ByteLen + amount1ByteLen + dataByteLen
         );
 
         assembly ("memory-safe") {

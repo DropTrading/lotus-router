@@ -11,6 +11,7 @@ using { nextAction } for Ptr global;
 uint256 constant takeAction = 0x19ff8034;
 uint256 constant uniswapV2Call = 0x10d1e85c;
 uint256 constant uniswapV3SwapCallback = 0xfa461e33;
+uint256 constant uniswapV3FlashCallback = 0xe9cbafb0;
 
 // ## Finds the Payload Pointer
 //
@@ -38,6 +39,8 @@ function findPtr() pure returns (Ptr) {
     } else if (selector == uniswapV2Call) {
         return Ptr.wrap(0xa4);
     } else if (selector == uniswapV3SwapCallback) {
+        return Ptr.wrap(0x84);
+    } else if (selector == uniswapV3FlashCallback) {
         return Ptr.wrap(0x84);
     } else {
         revert Error.UnexpectedEntryPoint();
