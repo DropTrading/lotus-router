@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import { BytesCalldata } from "src/types/BytesCalldata.sol";
 import { Ptr } from "src/types/PayloadPointer.sol";
 import { ERC20 } from "src/types/protocols/ERC20.sol";
-
 import { ERC6909 } from "src/types/protocols/ERC6909.sol";
 import { ERC721 } from "src/types/protocols/ERC721.sol";
 import { UniV2Pair } from "src/types/protocols/UniV2Pair.sol";
+import { UniV3Pool } from "src/types/protocols/UniV3Pool.sol";
 import { WETH } from "src/types/protocols/WETH.sol";
 
 // ## Decoder
@@ -80,6 +80,66 @@ library BBCDecoder {
             nextPtr := add(nextPtr, 0x01)
 
             to := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u32Shr, calldataload(nextPtr))
+
+            data := nextPtr
+
+            nextPtr := add(nextPtr, 0x04)
+
+            nextPtr := add(nextPtr, nextByteLen)
+        }
+    }
+
+    function decodeSwapUniV3(Ptr ptr) internal pure returns (
+        Ptr nextPtr,
+        bool canFail,
+        UniV3Pool pool,
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        BytesCalldata data
+    ) {
+        assembly {
+            let nextByteLen, nextBitShift
+            nextPtr := ptr
+
+            canFail := shr(u8Shr, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, 0x01)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            pool := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            recipient := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+
+            zeroForOne := shr(u8Shr, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, 0x01)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            amountSpecified := shr(nextBitShift, calldataload(nextPtr))
+            amountSpecified := signextend(sub(nextByteLen, 0x01), amountSpecified)
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            sqrtPriceLimitX96 := shr(nextBitShift, calldataload(nextPtr))
 
             nextPtr := add(nextPtr, nextByteLen)
             nextByteLen := shr(u32Shr, calldataload(nextPtr))

@@ -8,10 +8,10 @@ import { Action } from "src/types/Action.sol";
 import { BytesCalldata } from "src/types/BytesCalldata.sol";
 import { Ptr } from "src/types/PayloadPointer.sol";
 import { ERC20 } from "src/types/protocols/ERC20.sol";
-
 import { ERC6909 } from "src/types/protocols/ERC6909.sol";
 import { ERC721 } from "src/types/protocols/ERC721.sol";
 import { UniV2Pair } from "src/types/protocols/UniV2Pair.sol";
+import { UniV3Pool } from "src/types/protocols/UniV3Pool.sol";
 import { WETH } from "src/types/protocols/WETH.sol";
 import { BBCDecoder } from "src/util/BBCDecoder.sol";
 import { BBCEncoder } from "src/util/BBCEncoder.sol";
@@ -88,6 +88,125 @@ contract BBCDecoderTest is Test {
         assertEq(amount0Out, expectedAmount0Out);
         assertEq(amount1Out, expectedAmount1Out);
         assertEq(to, expectedTo);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
+
+    function testDecodeSwapUniV3() public view {
+        bool expectedCanFail = true;
+        address expectedPool = address(0xaabbccdd);
+        address expectedRecipient = address(0xeeffaabb);
+        bool expectedZeroForOne = true;
+        int256 expectedAmountSpecified = 0x02;
+        uint160 expectedSqrtPriceLimitX96 = 0x03;
+        bytes memory expectedData = hex"deadbeef";
+
+        bytes memory encoded = BBCEncoder.encodeSwapUniV3(
+            expectedCanFail,
+            expectedPool,
+            expectedRecipient,
+            expectedZeroForOne,
+            expectedAmountSpecified,
+            expectedSqrtPriceLimitX96,
+            expectedData
+        );
+
+        (
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            bytes memory data
+        ) = decoder.decodeSwapUniV3(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(UniV3Pool.unwrap(pool), expectedPool);
+        assertEq(recipient, expectedRecipient);
+        assertEq(zeroForOne, expectedZeroForOne);
+        assertEq(amountSpecified, expectedAmountSpecified);
+        assertEq(sqrtPriceLimitX96, expectedSqrtPriceLimitX96);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
+
+    function testDecodeSwapUniV3Negative() public view {
+        bool expectedCanFail = true;
+        address expectedPool = address(0xaabbccdd);
+        address expectedRecipient = address(0xeeffaabb);
+        bool expectedZeroForOne = true;
+        int256 expectedAmountSpecified = -0x02;
+        uint160 expectedSqrtPriceLimitX96 = 0x03;
+        bytes memory expectedData = hex"deadbeef";
+
+        bytes memory encoded = BBCEncoder.encodeSwapUniV3(
+            expectedCanFail,
+            expectedPool,
+            expectedRecipient,
+            expectedZeroForOne,
+            expectedAmountSpecified,
+            expectedSqrtPriceLimitX96,
+            expectedData
+        );
+
+        (
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            bytes memory data
+        ) = decoder.decodeSwapUniV3(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(UniV3Pool.unwrap(pool), expectedPool);
+        assertEq(recipient, expectedRecipient);
+        assertEq(zeroForOne, expectedZeroForOne);
+        assertEq(amountSpecified, expectedAmountSpecified);
+        assertEq(sqrtPriceLimitX96, expectedSqrtPriceLimitX96);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
+
+    function testFuzzDecodeSwapUniV3(
+        bool expectedCanFail,
+        address expectedPool,
+        address expectedRecipient,
+        bool expectedZeroForOne,
+        int256 expectedAmountSpecified,
+        uint160 expectedSqrtPriceLimitX96,
+        bytes memory expectedData
+    ) public view {
+        // why? bc `-expectedAmountSpecified` in this exact case overflows :(
+        vm.assume(
+            expectedAmountSpecified != -57896044618658097711785492504343953926634992332820282019728792003956564819968
+        );
+
+        bytes memory encoded = BBCEncoder.encodeSwapUniV3(
+            expectedCanFail,
+            expectedPool,
+            expectedRecipient,
+            expectedZeroForOne,
+            expectedAmountSpecified,
+            expectedSqrtPriceLimitX96,
+            expectedData
+        );
+
+        (
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            bytes memory data
+        ) = decoder.decodeSwapUniV3(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(UniV3Pool.unwrap(pool), expectedPool);
+        assertEq(recipient, expectedRecipient);
+        assertEq(zeroForOne, expectedZeroForOne);
+        assertEq(amountSpecified, expectedAmountSpecified);
+        assertEq(sqrtPriceLimitX96, expectedSqrtPriceLimitX96);
         assertEq(keccak256(data), keccak256(expectedData));
     }
 

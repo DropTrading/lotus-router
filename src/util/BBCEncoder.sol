@@ -96,6 +96,71 @@ library BBCEncoder {
         return encoded;
     }
 
+    function encodeSwapUniV3(
+        bool canFail,
+        address pool,
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes memory data
+    ) internal view returns (bytes memory) {
+        Action action = Action.SwapUniV3;
+        uint8 poolByteLen = byteLen(pool);
+        uint8 recipientByteLen = byteLen(recipient);
+        uint8 amountSpecifiedByteLen = byteLen(amountSpecified);
+        uint8 sqrtPriceLimitX96ByteLen = byteLen(sqrtPriceLimitX96);
+        uint256 dataByteLen = data.length;
+
+        bytes memory encoded = new bytes(
+            11 + poolByteLen + recipientByteLen + amountSpecifiedByteLen + sqrtPriceLimitX96ByteLen + dataByteLen
+        );
+
+        assembly ("memory-safe") {
+            let ptr := add(encoded, 0x20)
+
+            mstore(ptr, shl(0xf8, action))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(0xf8, canFail))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(0xf8, poolByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(poolByteLen, 0x08)), pool))
+            ptr := add(ptr, poolByteLen)
+
+            mstore(ptr, shl(0xf8, recipientByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(recipientByteLen, 0x08)), recipient))
+            ptr := add(ptr, recipientByteLen)
+
+            mstore(ptr, shl(0xf8, zeroForOne))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(0xf8, amountSpecifiedByteLen))
+            ptr := add(ptr, 0x01)
+ 
+            mstore(ptr, shl(sub(0x0100, mul(amountSpecifiedByteLen, 0x08)), amountSpecified))
+            ptr := add(ptr, amountSpecifiedByteLen)
+
+            mstore(ptr, shl(0xf8, sqrtPriceLimitX96ByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(sqrtPriceLimitX96ByteLen, 0x08)), sqrtPriceLimitX96))
+            ptr := add(ptr, sqrtPriceLimitX96ByteLen)
+
+            mstore(ptr, shl(0xe0, dataByteLen))
+            ptr := add(ptr, 0x04)
+
+            pop(staticcall(gas(), 0x04, add(data, 0x20), dataByteLen, ptr, dataByteLen))
+        }
+
+        return encoded;
+    }
+
     function encodeTransferERC20(
         bool canFail,
         address token,
@@ -501,5 +566,18 @@ library BBCEncoder {
         }
 
         return 0;
+    }
+
+    function byteLen(int256 word) internal pure returns (uint8) {
+        uint256 adjusted;
+
+        if (word < 0) {
+            adjusted = uint256(-word);
+        } else {
+            adjusted = uint256(word);
+        }
+
+        if (byteLen(adjusted) == 32) return 32;
+        else return byteLen(adjusted << 1);
     }
 }

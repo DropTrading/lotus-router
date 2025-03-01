@@ -8,6 +8,7 @@ import { ERC20 } from "src/types/protocols/ERC20.sol";
 import { ERC6909 } from "src/types/protocols/ERC6909.sol";
 import { ERC721 } from "src/types/protocols/ERC721.sol";
 import { UniV2Pair } from "src/types/protocols/UniV2Pair.sol";
+import { UniV3Pool } from "src/types/protocols/UniV3Pool.sol";
 import { WETH } from "src/types/protocols/WETH.sol";
 import { BBCDecoder } from "src/util/BBCDecoder.sol";
 
@@ -44,7 +45,17 @@ function execute(Action action, Ptr ptr) returns (Ptr, bool success) {
 
         success = pair.swap(amount0Out, amount1Out, to, data) || canFail;
     } else if (action == Action.SwapUniV3) {
-        revert("todo");
+        bool canFail;
+        UniV3Pool pool;
+        address recipient;
+        bool zeroForOne;
+        int256 amountSpecified;
+        uint160 sqrtPriceLimitX96;
+        BytesCalldata data;
+
+        (ptr, canFail, pool, recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) = BBCDecoder.decodeSwapUniV3(ptr);
+
+        success = pool.swap(recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) || canFail;
     } else if (action == Action.SwapUniV4) {
         revert("todo");
     } else if (action == Action.TransferERC20) {

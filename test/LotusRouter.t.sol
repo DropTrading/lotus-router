@@ -7,6 +7,7 @@ import { ERC20Mock } from "test/mock/ERC20Mock.sol";
 import { ERC6909Mock } from "test/mock/ERC6909Mock.sol";
 import { ERC721Mock } from "test/mock/ERC721Mock.sol";
 import { UniV2PairMock } from "test/mock/UniV2PairMock.sol";
+import { UniV3PoolMock } from "test/mock/UniV3PoolMock.sol";
 import { WETHMock, wethBytecode } from "test/mock/WETHMock.sol";
 
 import { LotusRouter } from "src/LotusRouter.sol";
@@ -34,6 +35,8 @@ contract LotusRouterTest is Test {
     LotusRouter lotus;
     UniV2PairMock univ2_0;
     UniV2PairMock univ2_1;
+    UniV3PoolMock univ3_0;
+    UniV3PoolMock univ3_1;
     ERC20Mock erc20_0;
     ERC20Mock erc20_1;
     ERC721Mock erc721_0;
@@ -46,6 +49,8 @@ contract LotusRouterTest is Test {
         lotus = new LotusRouter();
         univ2_0 = new UniV2PairMock();
         univ2_1 = new UniV2PairMock();
+        univ3_0 = new UniV3PoolMock();
+        univ3_1 = new UniV3PoolMock();
         erc20_0 = new ERC20Mock();
         erc20_1 = new ERC20Mock();
         erc721_0 = new ERC721Mock();
@@ -211,6 +216,308 @@ contract LotusRouterTest is Test {
         );
 
         assertTrue(success);
+    }
+
+    // -- UNIV3 ------------------------------------------------------------------------------------
+
+    function testSwapUniV3Single() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        bool zeroForOne = true;
+        int256 amountSpecified = 0x02;
+        uint160 sqrtPriceLimitX96 = 0x03;
+        bytes memory data = hex"deadbeef";
+
+        vm.expectCall(
+            address(univ3_0),
+            abi.encodeCall(
+                UniV3PoolMock.swap,
+                (recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data)
+            )
+        );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                data
+            )
+        );
+
+        assertTrue(success);
+    }
+
+    function testSwapUniV3NegativeSingle() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        bool zeroForOne = true;
+        int256 amountSpecified = -0x02;
+        uint160 sqrtPriceLimitX96 = 0x03;
+        bytes memory data = hex"deadbeef";
+
+        vm.expectCall(
+            address(univ3_0),
+            abi.encodeCall(
+                UniV3PoolMock.swap,
+                (recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data)
+            )
+        );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                data
+            )
+        );
+
+        assertTrue(success);
+    }
+
+    function testSwapUniV3ThrowsSingle() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        bool zeroForOne = true;
+        int256 amountSpecified = -0x02;
+        uint160 sqrtPriceLimitX96 = 0x03;
+        bytes memory data = hex"deadbeef";
+
+        univ3_0.setShouldThrow(true);
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                data
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testSwapUniV3Recurse() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        bool zeroForOne = true;
+        int256 amountSpecified = 0x02;
+        uint160 sqrtPriceLimitX96 = 0x03;
+        bytes memory data = hex"deadbeef";
+
+        bytes memory innerPayload = 
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_1),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                data
+            );
+
+        univ3_0.setDoCallback(true);
+
+        vm.expectCall(
+            address(univ3_0),
+            abi.encodeCall(
+                UniV3PoolMock.swap,
+                (recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, innerPayload)
+            )
+        );
+
+        vm.expectCall(
+            address(univ3_1),
+            abi.encodeCall(
+                UniV3PoolMock.swap,
+                (recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data)
+            )
+        );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                innerPayload
+            )
+        );
+
+        assertTrue(success);
+    }
+
+    function testFuzzSwapUniV3Single(
+        bool shouldThrow,
+        bool canFail,
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes memory data
+    ) public {
+        assumeReasonableInt256(amountSpecified);
+
+        univ3_0.setShouldThrow(shouldThrow);
+
+        if (!shouldThrow || canFail) {
+            vm.expectCall(
+                address(univ3_0),
+                abi.encodeCall(
+                    UniV3PoolMock.swap,
+                    (recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data)
+                )
+            );
+        }
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                data
+            )
+        );
+
+        assertEq(success, !shouldThrow || canFail);
+    }
+
+    function testSwapUniV3RecurseFirstThrows() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        bool zeroForOne = true;
+        int256 amountSpecified = 0x02;
+        uint160 sqrtPriceLimitX96 = 0x03;
+        bytes memory data = hex"deadbeef";
+
+        univ3_0.setShouldThrow(true);
+        univ3_0.setDoCallback(true);
+
+        bytes memory innerPayload = 
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_1),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                data
+            );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                innerPayload
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testSwapUniV3RecurseSecondThrows() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        bool zeroForOne = true;
+        int256 amountSpecified = 0x02;
+        uint160 sqrtPriceLimitX96 = 0x03;
+        bytes memory data = hex"deadbeef";
+
+        univ3_0.setDoCallback(true);
+        univ3_1.setShouldThrow(true);
+
+        bytes memory innerPayload = 
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_1),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                data
+            );
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                innerPayload
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testFuzzSwapUniV3Recurse(
+        bool shouldThrow,
+        bool canFail,
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes memory data
+    ) public {
+        assumeReasonableInt256(amountSpecified);
+
+        univ3_0.setDoCallback(true);
+        univ3_0.setShouldThrow(shouldThrow);
+
+        bytes memory innerPayload = BBCEncoder.encodeSwapUniV3(
+            canFail,
+            address(univ3_1),
+            recipient,
+            zeroForOne,
+            amountSpecified,
+            sqrtPriceLimitX96,
+            data
+        );
+
+        if (!shouldThrow || canFail) {
+            vm.expectCall(
+                address(univ3_0),
+                abi.encodeCall(
+                    UniV3PoolMock.swap,
+                    (recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, innerPayload)
+                )
+            );
+        }
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeSwapUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                zeroForOne,
+                amountSpecified,
+                sqrtPriceLimitX96,
+                innerPayload
+            )
+        );
+
+        assertEq(success, !shouldThrow || canFail);
     }
 
     // -- ERC20 ------------------------------------------------------------------------------------
@@ -1520,5 +1827,13 @@ contract LotusRouterTest is Test {
         assertLt(gasSendBefore - gasSendAfter, gasDepositBefore - gasDepositAfter);
 
         vm.stopPrank();
+    }
+
+    // -- UTILITIES ----------
+    function assumeReasonableInt256(int256 value) internal pure {
+        // why? bc `-value` in this exact case overflows :(
+        vm.assume(
+            value != -57896044618658097711785492504343953926634992332820282019728792003956564819968
+        );
     }
 }
