@@ -25,9 +25,7 @@ uint256 constant swapSelector = 0x022c0d9f00000000000000000000000000000000000000
 //
 // ### Notes
 //
-// - If swapping across multiple pairs, `to` will be the next pair in the chain.
-// - This is memory safe, as we do not interfere with allocated memory and we
-//   allow it to be freed after this function ends.
+// If swapping across multiple pairs, `to` will be the next pair in the chain.
 //
 // ### Procedures
 //
