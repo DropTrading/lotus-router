@@ -16,7 +16,7 @@ enum Action {
     Halt,
     SwapUniV2,
     SwapUniV3,
-    SwapUniV4,
+    FlashUniV3,
     TransferERC20,
     TransferFromERC20,
     TransferFromERC721,
@@ -56,8 +56,17 @@ function execute(Action action, Ptr ptr) returns (Ptr, bool success) {
         (ptr, canFail, pool, recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) = BBCDecoder.decodeSwapUniV3(ptr);
 
         success = pool.swap(recipient, zeroForOne, amountSpecified, sqrtPriceLimitX96, data) || canFail;
-    } else if (action == Action.SwapUniV4) {
-        revert("todo");
+    } else if (action == Action.FlashUniV3) {
+        bool canFail;
+        UniV3Pool pool;
+        address recipient;
+        uint256 amount0;
+        uint256 amount1;
+        BytesCalldata data;
+
+        (ptr, canFail, pool, recipient, amount0, amount1, data) = BBCDecoder.decodeFlashUniV3(ptr);
+
+        success = pool.flash(recipient, amount0, amount1, data) || canFail;
     } else if (action == Action.TransferERC20) {
         bool canFail;
         ERC20 token;

@@ -95,6 +95,43 @@ contract BBCDecoderMock {
         }
     }
 
+    function decodeFlashUniV3(bytes calldata encoded) public pure returns (
+        bool canFail,
+        UniV3Pool pool,
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
+        bytes memory data
+    ) {
+        Ptr ptr;
+        BytesCalldata packedData;
+
+        // add 0x01 bc the first byte is the `Action` opcode, it's not decoded
+        assembly {
+            ptr := add(0x01, encoded.offset)
+        }
+
+        (, canFail, pool, recipient, amount0, amount1, packedData) = ptr.decodeFlashUniV3();
+
+        assembly {
+            let fmp := mload(0x40)
+
+            data := fmp
+
+            let len := shr(0xe0, calldataload(packedData))
+
+            mstore(fmp, len)
+
+            fmp := add(fmp, 0x20)
+
+            calldatacopy(fmp, add(packedData, 0x04), len)
+
+            fmp := add(fmp, len)
+
+            mstore(0x40, fmp)
+        }
+    }
+
     function decodeTransferERC20(
         bytes calldata encoded
     ) public pure returns (bool canFail, ERC20 token, address receiver, uint256 amount) {

@@ -161,6 +161,67 @@ library BBCEncoder {
         return encoded;
     }
 
+    function encodeFlashUniV3(
+        bool canFail,
+        address pool,
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
+        bytes memory data
+    ) internal view returns (bytes memory) {
+        Action action = Action.FlashUniV3;
+        uint8 poolByteLen = byteLen(pool);
+        uint8 recipientByteLen = byteLen(recipient);
+        uint8 amount0ByteLen = byteLen(amount0);
+        uint8 amount1ByteLen = byteLen(amount1);
+        uint256 dataByteLen = data.length;
+
+        bytes memory encoded = new bytes(
+            11 + poolByteLen + recipientByteLen + amount0ByteLen + amount1ByteLen + dataByteLen
+        );
+
+        assembly ("memory-safe") {
+            let ptr := add(encoded, 0x20)
+
+            mstore(ptr, shl(0xf8, action))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(0xf8, canFail))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(0xf8, poolByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(poolByteLen, 0x08)), pool))
+            ptr := add(ptr, poolByteLen)
+
+            mstore(ptr, shl(0xf8, recipientByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(recipientByteLen, 0x08)), recipient))
+            ptr := add(ptr, recipientByteLen)
+
+            mstore(ptr, shl(0xf8, amount0ByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(amount0ByteLen, 0x08)), amount0))
+            ptr := add(ptr, amount0ByteLen)
+
+            mstore(ptr, shl(0xf8, amount1ByteLen))
+            ptr := add(ptr, 0x01)
+
+            mstore(ptr, shl(sub(0x0100, mul(amount1ByteLen, 0x08)), amount1))
+            ptr := add(ptr, amount1ByteLen)
+
+            mstore(ptr, shl(0xe0, dataByteLen))
+            ptr := add(ptr, 0x04)
+
+            pop(staticcall(gas(), 0x04, add(data, 0x20), dataByteLen, ptr, dataByteLen))
+        }
+
+        return encoded;
+    }
+
     function encodeTransferERC20(
         bool canFail,
         address token,

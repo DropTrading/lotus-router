@@ -56,8 +56,8 @@ the public blockchains.
 Batchable actions:
 
 - [x] Uniswap V2 Swap
-- [ ] Uniswap V3 Swap
-- [ ] Uniswap V4 Swap
+- [x] Uniswap V3 Swap
+- [x] Uniswap V3 Flash
 - [x] ERC20 Transfer
 - [x] ERC20 TransferFrom
 - [x] ERC721 TransferFrom
@@ -146,4 +146,40 @@ sequenceDiagram
     MarketAB->>-Lotus(1): return
     Lotus(1)->>-MarketBC: return
     MarketBC->>-Lotus: return
+```
+
+#### Uniswap V3 Flash
+
+- `Lotus` calls `flash` on `MarketAB`
+  - `MarketAB` transfers `TokenA` to `Lotus`, if any was requested
+  - `MarketAB` transfers `TokenB` to `Lotus`, if any was requested
+  - `MarketAB` back into `Lotus` with `uniswapV3FlashCallback`
+    - `Lotus` transfers `TokenA` to `MarketAB`, if any was taken
+    - `Lotus` transfers `TokenB` to `MarketAB`, if any was taken
+
+```mermaid
+sequenceDiagram
+    Lotus->>+MarketAB: flash
+    MarketAB-->>Lotus: transfer A
+    MarketAB-->>Lotus: transfer B
+    MarketAB->>+Lotus: uniswapV3FlashCallback
+    Lotus-->>MarketAB: transfer A
+    Lotus-->>MarketAB: transfer B
+    Lotus->>-MarketAB: return
+    MarketAB->>-Lotus: return
+```
+
+A broken out, more intuitive diagram breaks the `Lotus` router out into its
+two independent call contexts.
+
+```mermaid
+sequenceDiagram
+    Lotus->>+MarketAB: flash
+    MarketAB-->>Lotus(1): transfer A
+    MarketAB-->>Lotus(1): transfer B
+    MarketAB->>+Lotus(1): uniswapV3FlashCallback
+    Lotus(1)-->>MarketAB: transfer A
+    Lotus(1)-->>MarketAB: transfer B
+    Lotus(1)->>-MarketAB: return
+    MarketAB->>-Lotus: return
 ```

@@ -520,6 +520,82 @@ contract LotusRouterTest is Test {
         assertEq(success, !shouldThrow || canFail);
     }
 
+    function testFlashUniV3Single() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        uint256 amount0 = 0x45;
+        uint256 amount1 = 0x46;
+        bytes memory data = hex"deadbeef";
+
+        vm.expectCall(address(univ3_0), abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data)));
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeFlashUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                amount0,
+                amount1,
+                data
+            )
+        );
+
+        assertTrue(success);
+    }
+
+    function testFlashUniV3SingleThrows() public {
+        bool canFail = false;
+        address recipient = address(0xaabbccdd);
+        uint256 amount0 = 0x45;
+        uint256 amount1 = 0x46;
+        bytes memory data = hex"deadbeef";
+
+        univ3_0.setShouldThrow(true);
+
+        vm.expectCall(address(univ3_0), abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data)));
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeFlashUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                amount0,
+                amount1,
+                data
+            )
+        );
+
+        assertFalse(success);
+    }
+
+    function testFuzzFlashUniV3Single(
+        bool shouldThrow,
+        bool canFail,
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
+        bytes memory data
+    ) public {
+        univ3_0.setShouldThrow(shouldThrow);
+
+        if (!shouldThrow || canFail) {
+            vm.expectCall(address(univ3_0), abi.encodeCall(UniV3PoolMock.flash, (recipient, amount0, amount1, data)));
+        }
+
+        bool success = lotus.takeAction(
+            BBCEncoder.encodeFlashUniV3(
+                canFail,
+                address(univ3_0),
+                recipient,
+                amount0,
+                amount1,
+                data
+            )
+        );
+
+        assertEq(success, !shouldThrow || canFail);
+    }
+
     // -- ERC20 ------------------------------------------------------------------------------------
 
     function testTransferERC20Single() public {

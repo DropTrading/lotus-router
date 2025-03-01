@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import { IUniV3SwapCallback } from "test/interfaces/IUniV3SwapCallback.sol";
+import { IUniV3FlashCallback } from "test/interfaces/IUniV3FlashCallback.sol";
 
 contract UniV3PoolMock {
     event Swap(
@@ -10,6 +11,13 @@ contract UniV3PoolMock {
         bool zeroForOne,
         int256 amountSpecified,
         uint160 sqrtPriceX96,
+        bytes data
+    );
+    
+    event Flash(
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
         bytes data
     );
 
@@ -53,6 +61,25 @@ contract UniV3PoolMock {
             IUniV3SwapCallback(msg.sender).uniswapV3SwapCallback(
                 _amount0Delta,
                 _amount1Delta,
+                data
+            );
+        }
+    }
+
+    function flash(
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) public {
+        require(!_shouldThrow);
+
+        emit Flash(recipient, amount0, amount1, data);
+
+        if (_shouldDoCallback) {
+            IUniV3FlashCallback(msg.sender).uniswapV3FlashCallback(
+                amount0,
+                amount1,
                 data
             );
         }

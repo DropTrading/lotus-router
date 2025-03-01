@@ -5,9 +5,10 @@ import { BytesCalldata } from "src/types/BytesCalldata.sol";
 
 type UniV3Pool is address;
 
-using { swap } for UniV3Pool global;
+using { swap, flash } for UniV3Pool global;
 
 uint256 constant swapSelector = 0x128acb0800000000000000000000000000000000000000000000000000000000;
+uint256 constant flashSelector = 0x490e6cbc00000000000000000000000000000000000000000000000000000000;
 
 function swap(
     UniV3Pool pool,
@@ -41,5 +42,37 @@ function swap(
         calldatacopy(add(fmp, 0xc4), data, dataLen)
 
         success := call(gas(), pool, 0x00, fmp, add(dataLen, 0xe4), 0x00, 0x00)
+    }
+}
+
+function flash(
+    UniV3Pool pool,
+    address recipient,
+    uint256 amount0,
+    uint256 amount1,
+    BytesCalldata data
+) returns (bool success) {
+    assembly ("memory-safe") {
+        let fmp := mload(0x40)
+
+        let dataLen := shr(0xe0, calldataload(data))
+
+        data := add(data, 0x04)
+
+        mstore(add(fmp, 0x00), flashSelector)
+
+        mstore(add(fmp, 0x04), recipient)
+
+        mstore(add(fmp, 0x24), amount0)
+
+        mstore(add(fmp, 0x44), amount1)
+
+        mstore(add(fmp, 0x64), 0x80)
+
+        mstore(add(fmp, 0x84), dataLen)
+
+        calldatacopy(add(fmp, 0xa4), data, dataLen)
+
+        success := call(gas(), pool, 0x00, fmp, add(dataLen, 0xc4), 0x00, 0x00)
     }
 }

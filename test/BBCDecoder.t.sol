@@ -210,6 +210,76 @@ contract BBCDecoderTest is Test {
         assertEq(keccak256(data), keccak256(expectedData));
     }
 
+    function testDecodeFlashUniV3() public view {
+        bool expectedCanFail = true;
+        address expectedPool = address(0xaabbccdd);
+        address expectedRecipient = address(0xeeffaabb);
+        uint256 expectedAmount0 = 0x45;
+        uint256 expectedAmount1 = 0x46;
+        bytes memory expectedData = hex"deadbeef";
+
+        bytes memory encoded = BBCEncoder.encodeFlashUniV3(
+            expectedCanFail,
+            expectedPool,
+            expectedRecipient,
+            expectedAmount0,
+            expectedAmount1,
+            expectedData
+        );
+
+        (
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            uint256 amount0,
+            uint256 amount1,
+            bytes memory data
+        ) = decoder.decodeFlashUniV3(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(UniV3Pool.unwrap(pool), expectedPool);
+        assertEq(recipient, expectedRecipient);
+        assertEq(amount0, expectedAmount0);
+        assertEq(amount1, expectedAmount1);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
+
+    function testFuzzDecodeFlashUniV3(
+        bool expectedCanFail,
+        address expectedPool,
+        address expectedRecipient,
+        uint256 expectedAmount0,
+        uint256 expectedAmount1,
+        bytes memory expectedData
+    ) public {
+        bytes memory encoded = BBCEncoder.encodeFlashUniV3(
+            expectedCanFail,
+            expectedPool,
+            expectedRecipient,
+            expectedAmount0,
+            expectedAmount1,
+            expectedData
+        );
+
+        emit log_bytes(encoded);
+
+        (
+            bool canFail,
+            UniV3Pool pool,
+            address recipient,
+            uint256 amount0,
+            uint256 amount1,
+            bytes memory data
+        ) = decoder.decodeFlashUniV3(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(UniV3Pool.unwrap(pool), expectedPool);
+        assertEq(recipient, expectedRecipient);
+        assertEq(amount0, expectedAmount0);
+        assertEq(amount1, expectedAmount1);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
+
     function testDecodeTransferERC20() public view {
         bool expectedCanFail = true;
         address expectedToken = address(0xaabbccdd);
