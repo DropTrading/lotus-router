@@ -28,10 +28,31 @@ import { WETH } from "src/types/protocols/WETH.sol";
 // exploring in the future as to whether or not the upper bits of the byte
 // length are unoccupied enough to justify an encoding as mentioned in the
 // statically sized calldata arguments above.
+//
+// We maintain a running pointer `Ptr`, which is incremented as parameters are
+// parsed from calldata. This is because the encoding scheme is tightly packed
+// such that the exact position of subsequent parameters is unknown at compile
+// time. We do this to ensure tight calldata encoding, as callata is quite
+// expensive.
 library BBCDecoder {
     uint256 internal constant u8Shr = 0xf8;
     uint256 internal constant u32Shr = 0xe0;
 
+    // ## Decode Uniswap V2 Swap
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - pair: The Uniswap V2 pair address.
+    // - amount0Out: The expected output amount for token 0.
+    // - amount1Out: The expected output amount for token 1.
+    // - to: The receiver of the swap output.
+    // - data: The arbitrary calldata for UniV2 callbacks, if any.
     function decodeSwapUniV2(
         Ptr ptr
     )
@@ -92,6 +113,22 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode Uniswap V3 Swap
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - pool: The Uniswap V3 pool address.
+    // - recipient: The receiver of the swap output.
+    // - zeroForOne: Direction of the trade; "true": zero for one, "false": one for zero.
+    // - amountSpecified: The "exact" portion of the trade amount (More in Notes).
+    // - sqrtPriceLimitX96: The Q64.96 representation of the price limit.
+    // - data: The arbitrary calldata for UniV3 callbacks, if any.
     function decodeSwapUniV3(
         Ptr ptr
     )
@@ -158,6 +195,21 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode Uniswap V3 Flash Loan
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - pool: The Uniswap V3 pool address.
+    // - recipient: The receiver of the flash output.
+    // - amount0: The amount of Token 0 to flash.
+    // - amount1: The amount of Token 1 to flash.
+    // - data: The arbitrary calldata for UniV3 callbacks, if any.
     function decodeFlashUniV3(
         Ptr ptr
     )
@@ -218,6 +270,19 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode ERC20 Transfer
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - token: The ERC20 address.
+    // - receiver: The transfer receiver address.
+    // - amount: The transfer amount.
     function decodeTransferERC20(
         Ptr ptr
     )
@@ -256,6 +321,20 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode ERC20 TransferFrom
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - token: The ERC20 address.
+    // - sender: The transfer sender address.
+    // - receiver: The transfer receiver address.
+    // - amount: The transfer amount.
     function decodeTransferFromERC20(
         Ptr ptr
     )
@@ -308,6 +387,20 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode ERC721 TransferFrom
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - token: The ERC721 address.
+    // - sender: The transfer sender address.
+    // - receiver: The transfer receiver address.
+    // - tokenId: The token ID to transfer.
     function decodeTransferFromERC721(
         Ptr ptr
     )
@@ -360,6 +453,20 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode ERC6909 Transfer
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - multitoken: The ERC6909 address.
+    // - receiver: The transfer receiver address.
+    // - amount: The amount to transfer.
+    // - tokenId: The token ID to transfer.
     function decodeTransferERC6909(
         Ptr ptr
     )
@@ -412,6 +519,21 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode ERC6909 TransferFrom
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - multitoken: The ERC6909 address.
+    // - sender: The transfer sender address.
+    // - receiver: The transfer receiver address.
+    // - amount: The amount to transfer.
+    // - tokenId: The token ID to transfer.
     function decodeTransferFromERC6909(
         Ptr ptr
     )
@@ -472,6 +594,18 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode WETH Deposit
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - weth: The WETH address.
+    // - value: The amount to deposit.
     function decodeDepositWETH(
         Ptr ptr
     ) internal pure returns (Ptr nextPtr, bool canFail, WETH weth, uint256 value) {
@@ -499,6 +633,18 @@ library BBCDecoder {
         }
     }
 
+    // ## Decode WETH Withdrawal
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - weth: The WETH address.
+    // - value: The amount to withdraw.
     function decodeWithdrawWETH(
         Ptr ptr
     ) internal pure returns (Ptr nextPtr, bool canFail, WETH weth, uint256 value) {
