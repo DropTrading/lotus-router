@@ -5,6 +5,7 @@ libs = ["lib"]
 
 optimizer_runs = 0xffffffff
 via_ir = true
+bytecode_hash = "none"
 
 [fmt]
 multiline_func_header = "params_first"
