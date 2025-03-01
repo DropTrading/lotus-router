@@ -71,3 +71,79 @@ Other features:
 - [x] Unconventional Encoder/Decoder (inspired by bigbrainchad.eth)
 - [ ] Transient storage call stack constraints (inspired by bigbrainchad.eth)
 - [x] Virtual Machine Style Architecture (inspired by, yes, bigbrainchad.eth)
+
+### Call Diagrams
+
+#### Uniswap V2 Chaining
+
+Chaining Uniswap V2 markets entails iteratively calling pairs, forwarding the
+output of one swap into the next pair.
+
+- `Lotus` transfers `TokenA` to `MarketAB`
+- `Lotus` calls `swap` on `MarketAB`
+  - `MarketAB` swaps and transfers `TokenB` to `MarketBC`
+- `Lotus` calls `swap` on `MarketBC`
+  - `MarketBC` swaps and transfers `TokenC` to `Lotus`
+
+```mermaid
+sequenceDiagram
+    Lotus-->>MarketAB: transfer A
+    Lotus->>+MarketAB: swap(A, B)
+    MarketAB-->>MarketBC: transfer B
+    MarketAB->>-Lotus: return
+    Lotus->>+MarketBC: swap(B, C)
+    MarketBC-->>Lotus: transfer C
+    MarketBC->>-Lotus: return
+```
+
+#### Uniswap V3 Chaining
+
+Chaining Uniswap V3 markets entails recursively calling pools, settling each
+market in its respective callback to the router.
+
+While it is possible to simplify encoding control flow by calling iteratively,
+recursion saves `O(n)` calls.
+
+- `Lotus` calls `swap` on `MarketBC`
+  - `MarketBC` transfers `TokenC` to `Lotus`
+  - `MarketBC` calls back into `Lotus` with `uniswapV3Callback`
+    - `Lotus` calls `swap` on `MarketAB`
+      - `MarketAB` transfers `TokenB` to `Lotus`
+      - `MarketAB` calls back into `Lotus` with `uniswapV3Callback`
+        - `Lotus` transfers `TokenA` to `MarketAB`, settling the balances
+        - `Lotus` transfers `TokenB` to `MarketBC`, settling the balances
+
+```mermaid
+sequenceDiagram
+    Lotus->>+MarketBC: swap(B, C)
+    MarketBC-->>Lotus: transfer C
+    MarketBC->>+Lotus: uniswapV3SwapCallback
+    Lotus->>+MarketAB: swap(A, B)
+    MarketAB-->>Lotus: transfer B
+    MarketAB->>+Lotus: uniswapV3SwapCallback
+    Lotus-->>MarketAB: transfer A
+    Lotus-->>MarketBC: transfer B
+    Lotus->>-MarketAB: return
+    MarketAB->>-Lotus: return
+    Lotus->>-MarketBC: return
+    MarketBC->>-Lotus: return
+```
+
+A broken out, more intuitive diagram breaks the `Lotus` router out into its
+three independent call contexts.
+
+```mermaid
+sequenceDiagram
+    Lotus->>+MarketBC: swap(B, C)
+    MarketBC-->>Lotus(1): transfer C
+    MarketBC->>+Lotus(1): uniswapV3SwapCallback
+    Lotus(1)->>+MarketAB: swap(A, B)
+    MarketAB-->>Lotus(2): transfer B
+    MarketAB->>+Lotus(2): uniswapV3SwapCallback
+    Lotus(2)-->>MarketAB: transfer A
+    Lotus(2)-->>MarketBC: transfer B
+    Lotus(2)->>-MarketAB: return
+    MarketAB->>-Lotus(1): return
+    Lotus(1)->>-MarketBC: return
+    MarketBC->>-Lotus: return
+```
