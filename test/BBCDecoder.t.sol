@@ -12,9 +12,12 @@ import { ERC6909 } from "src/types/protocols/ERC6909.sol";
 import { ERC721 } from "src/types/protocols/ERC721.sol";
 import { UniV2Pair } from "src/types/protocols/UniV2Pair.sol";
 import { UniV3Pool } from "src/types/protocols/UniV3Pool.sol";
+import { SwapParams } from "src/types/protocols/UniV4Pool.sol";
 import { WETH } from "src/types/protocols/WETH.sol";
 import { BBCDecoder } from "src/util/BBCDecoder.sol";
 import { BBCEncoder } from "src/util/BBCEncoder.sol";
+import "forge-std/console.sol";
+
 
 contract BBCDecoderTest is Test {
     BBCDecoderMock decoder;
@@ -208,6 +211,66 @@ contract BBCDecoderTest is Test {
         assertEq(zeroForOne, expectedZeroForOne);
         assertEq(amountSpecified, expectedAmountSpecified);
         assertEq(sqrtPriceLimitX96, expectedSqrtPriceLimitX96);
+        assertEq(keccak256(data), keccak256(expectedData));
+    }
+
+    function testDecodeSwapUniV4() public view {
+        bool expectedCanFail = true;
+        address expectedToken0 = address(0xaabbccdd0001);
+        address expectedToken1 = address(0xaabbccdd0002);
+        bool expectedZeroForOne = true;
+        int256 expectedAmountSpecified = 0x02;
+        uint160 expectedSqrtPriceLimitX96 = 0x03;
+        uint24 expectedFee = 0x1337;
+        int24 expectedTickSpacing = 0x1111;
+        address expectedHook= address(0xabcabcabcc0088);
+
+        bytes memory expectedData = hex"deadbeefbbeeff";
+
+        SwapParams memory params = SwapParams({
+            zeroForOne: expectedZeroForOne,
+            amountSpecified: expectedAmountSpecified,
+            sqrtPriceLimitX96: expectedSqrtPriceLimitX96
+        });
+
+        bytes memory encoded = BBCEncoder.encodeSwapUniV4(
+            expectedCanFail,
+            expectedToken0,
+            expectedToken1,
+            expectedFee,
+            expectedTickSpacing,
+            expectedHook,
+            params,
+            expectedData
+        );
+        console.logBytes(encoded);
+
+
+        (
+            bool canFail,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickSpacing,
+            address hook,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            bytes memory data
+        ) = decoder.decodeSwapUniV4(encoded);
+
+        assertEq(canFail, expectedCanFail);
+        assertEq(token0, expectedToken0);
+        assertEq(token1, expectedToken1);
+        assertEq(fee, expectedFee);
+        assertEq(tickSpacing, expectedTickSpacing);
+        assertEq(hook, expectedHook);
+        assertEq(zeroForOne, expectedZeroForOne);
+        assertEq(amountSpecified, expectedAmountSpecified);
+        assertEq(sqrtPriceLimitX96, expectedSqrtPriceLimitX96);
+        console.logBytes(data);
+
+
         assertEq(keccak256(data), keccak256(expectedData));
     }
 

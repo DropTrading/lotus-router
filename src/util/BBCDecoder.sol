@@ -6,9 +6,12 @@ import { Ptr } from "src/types/PayloadPointer.sol";
 import { ERC20 } from "src/types/protocols/ERC20.sol";
 import { ERC6909 } from "src/types/protocols/ERC6909.sol";
 import { ERC721 } from "src/types/protocols/ERC721.sol";
+import { UniV1Exchange } from "src/types/protocols/UniV1Exchange.sol";
 import { UniV2Pair } from "src/types/protocols/UniV2Pair.sol";
 import { UniV3Pool } from "src/types/protocols/UniV3Pool.sol";
 import { WETH } from "src/types/protocols/WETH.sol";
+import "forge-std/console.sol";
+
 
 // ## Decoder
 //
@@ -36,7 +39,79 @@ import { WETH } from "src/types/protocols/WETH.sol";
 // expensive.
 library BBCDecoder {
     uint256 internal constant u8Shr = 0xf8;
+    uint256 internal constant u24Shr = 0xe8;
     uint256 internal constant u32Shr = 0xe0;
+
+    // ## Decode Uniswap V1 Swap
+    //
+    // ### Parameters
+    //
+    // - ptr: The running pointer.
+    //
+    // ### Returns
+    //
+    // - nextPtr: The updated pointer.
+    // - canFail: Boolean indicating whether the call can fail.
+    // - pair: The Uniswap V1 pair address.
+    // - amountIn: 
+    // - amountOUt: 
+    // - to: The receiver of the swap output.
+    function decodeSwapUniV1(
+        Ptr ptr
+    ) internal pure returns (
+            Ptr nextPtr,
+            bool canFail,
+            UniV1Exchange exchange,
+            bool ethForToken,
+            uint256 amountIn,
+            uint256 amountOut,
+            address to
+        )
+    {
+        assembly {
+            let nextByteLen, nextBitShift
+            nextPtr := ptr
+
+            canFail := shr(u8Shr, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, 0x01)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            exchange := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            ethForToken := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            amountIn := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            amountOut:= shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+            nextByteLen := shr(u8Shr, calldataload(nextPtr))
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            nextPtr := add(nextPtr, 0x01)
+
+            to := shr(nextBitShift, calldataload(nextPtr))
+
+            nextPtr := add(nextPtr, nextByteLen)
+        }
+    }
 
     // ## Decode Uniswap V2 Swap
     //
@@ -267,6 +342,89 @@ library BBCDecoder {
             nextPtr := add(nextPtr, 0x04)
 
             nextPtr := add(nextPtr, nextByteLen)
+        }
+    }
+
+    function decodeSwapUniV4(
+        Ptr ptr
+    )
+        internal
+        pure
+        returns (
+            Ptr nextPtr,
+            bool canFail,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickSpacing,
+            address hook,
+            bool zeroForOne,
+            int256 amountSpecified,
+            uint160 sqrtPriceLimitX96,
+            BytesCalldata data
+        )
+    {
+        assembly {
+
+            let nextByteLen, nextBitShift
+            nextPtr := ptr
+
+            canFail := shr(u8Shr, calldataload(nextPtr))  // +1
+            nextPtr := add(nextPtr, 0x01)
+
+            nextByteLen := shr(u8Shr, calldataload(nextPtr)) // +1
+            nextPtr := add(nextPtr, 0x01)
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen)) 
+
+            token0 := shr(nextBitShift, calldataload(nextPtr)) // +nextByteLen
+            nextPtr := add(nextPtr, nextByteLen)
+
+            nextByteLen := shr(u8Shr, calldataload(nextPtr)) // +1
+            nextPtr := add(nextPtr, 0x01)
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+
+            token1 := shr(nextBitShift, calldataload(nextPtr)) // + nextByteLen
+            nextPtr := add(nextPtr, nextByteLen)
+
+            fee := shr(0xe8, calldataload(nextPtr)) // +3
+            nextPtr := add(nextPtr, 0x03)
+            nextBitShift := sub(0x0100, mul(0x08, 3))
+
+            tickSpacing := shr(nextBitShift, calldataload(nextPtr)) // +3
+            nextPtr := add(nextPtr, 0x03)
+            nextBitShift := sub(0x0100, mul(0x08, 3))
+
+            nextByteLen := shr(u8Shr, calldataload(nextPtr)) // +1
+            nextPtr := add(nextPtr, 0x01)
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+
+            hook := shr(nextBitShift, calldataload(nextPtr)) // +nextByteLen
+            nextPtr := add(nextPtr, nextByteLen)
+
+            zeroForOne := shr(u8Shr,calldataload(nextPtr)) // +1
+            nextPtr := add(nextPtr,0x01)
+
+            nextByteLen := shr(u8Shr, calldataload(nextPtr)) // +1
+            nextPtr:= add(nextPtr,0x01)
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+            
+            amountSpecified := shr(nextBitShift, calldataload(nextPtr)) // +nextByteLen
+            nextPtr := add(nextPtr, nextByteLen)
+
+            nextByteLen := shr(u8Shr, calldataload(nextPtr)) // +1
+            nextPtr := add(nextPtr, 0x01)
+            nextBitShift := sub(0x0100, mul(0x08, nextByteLen))
+
+            sqrtPriceLimitX96 := shr(nextBitShift, calldataload(nextPtr)) // +nextByteLen
+            nextPtr := add(nextPtr, nextByteLen)
+
+            nextByteLen := shr(u32Shr, calldataload(nextPtr))  // +4
+
+            data := nextPtr
+
+            nextPtr := add(nextPtr, 0x04)
+            nextPtr := add(nextPtr, nextByteLen)
+
         }
     }
 

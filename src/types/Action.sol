@@ -9,8 +9,10 @@ pragma solidity 0.8.28;
 // action is encoded. This allows for tighter packing of calldata.
 enum Action {
     Halt,
+    SwapUniV1,
     SwapUniV2,
     SwapUniV3,
+    SwapUniV4,
     FlashUniV3,
     TransferERC20,
     TransferFromERC20,
