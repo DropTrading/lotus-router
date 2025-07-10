@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 // weth9 (`0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2`)
 // bytecode on ethereum, compiled w `v0.4.19+commit.c4cbbb05`

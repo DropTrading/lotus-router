@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import { IUniV3FlashCallback } from "test/interfaces/IUniV3FlashCallback.sol";
 import { IUniV3SwapCallback } from "test/interfaces/IUniV3SwapCallback.sol";

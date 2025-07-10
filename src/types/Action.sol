@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 // ## Action Enumeration
 //
@@ -12,7 +12,7 @@ enum Action {
     SwapUniV1,
     SwapUniV2,
     SwapUniV3,
-    SwapUniV4,
+    SwapUniV4, // 弃用
     FlashUniV3,
     TransferERC20,
     TransferFromERC20,
@@ -21,5 +21,14 @@ enum Action {
     TransferFromERC6909,
     DepositWETH,
     WithdrawWETH,
-    DynCall
+    DynCall,
+    UniV4Unlock,
+    UniV4Swap,
+    UniV4Sync,
+    UniV4Settle,
+    UniV4Take,
+    UniV4SwapAllInOne,
+
+    SwapPancakeV2
+
 }

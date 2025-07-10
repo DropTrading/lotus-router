@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import { Test } from "lib/forge-std/src/Test.sol";
+
 import { ERC20Mock } from "test/mock/ERC20Mock.sol";
+import {BalanceDelta} from "src/types/protocols/BalanceDelta.sol";
 
 import { ERC6909Mock } from "test/mock/ERC6909Mock.sol";
 import { ERC721Mock } from "test/mock/ERC721Mock.sol";
@@ -10,9 +12,17 @@ import { UniV2PairMock } from "test/mock/UniV2PairMock.sol";
 import { UniV3PoolMock } from "test/mock/UniV3PoolMock.sol";
 import { WETHMock, wethBytecode } from "test/mock/WETHMock.sol";
 import { DynTargetMock } from "test/mock/DynTargetMock.sol";
+import {IERC20} from "test/interfaces/IERC20.sol";
+import "forge-std/console.sol";
 
 import { LotusRouter } from "src/LotusRouter.sol";
 import { BBCEncoder } from "src/util/BBCEncoder.sol";
+
+interface IWETH {
+    function deposit() external payable;
+    function transfer(address to, uint256 value) external returns (bool);
+    function approve(address spender, uint256 value) external returns (bool);
+}
 
 function takeAction(LotusRouter lotus, bytes memory data) returns (bool success) {
     bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
@@ -1095,8 +1105,7 @@ contract LotusRouterTest is Test {
         erc20_0.setShouldThrow(true);
 
         vm.expectCall(
-            address(erc20_1),
-            abi.encodeCall(ERC20Mock.transferFrom, (sender_1, receiver_1, amount_1)),
+            address(erc20_1), abi.encodeCall(ERC20Mock.transferFrom, (sender_1, receiver_1, amount_1)),
             0
         );
 
@@ -1841,7 +1850,7 @@ contract LotusRouterTest is Test {
 
         vm.expectCall(address(weth), value, new bytes(0));
 
-        bool success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail, address(weth), value));
+        bool success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail,  value));
 
         assertTrue(success);
     }
@@ -1853,7 +1862,7 @@ contract LotusRouterTest is Test {
         vm.expectCall(address(weth), value, new bytes(0));
 
         bool success = lotus.takeActionWithValue(
-            value, BBCEncoder.encodeDepositWETH(canFail, address(weth), value)
+            value, BBCEncoder.encodeDepositWETH(canFail, value)
         );
 
         assertTrue(success);
@@ -1867,7 +1876,7 @@ contract LotusRouterTest is Test {
 
         vm.expectCall(address(weth), value, new bytes(0));
 
-        bool success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail, address(weth), value));
+        bool success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail, value));
 
         assertTrue(success);
     }
@@ -1878,7 +1887,7 @@ contract LotusRouterTest is Test {
 
         weth.setShouldThrow(true);
 
-        bool success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail, address(weth), value));
+        bool success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail, value));
 
         assertFalse(success);
     }
@@ -1904,12 +1913,12 @@ contract LotusRouterTest is Test {
             vm.deal(alice, value);
 
             success = lotus.takeActionWithValue(
-                value, BBCEncoder.encodeDepositWETH(canFail, address(weth), value)
+                value, BBCEncoder.encodeDepositWETH(canFail, value)
             );
         } else {
             vm.deal(address(lotus), value);
 
-            success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail, address(weth), value));
+            success = lotus.takeAction(BBCEncoder.encodeDepositWETH(canFail, value));
         }
 
         assertEq(success, canFail || !shouldThrow);
@@ -1924,7 +1933,7 @@ contract LotusRouterTest is Test {
         vm.expectCall(address(weth), abi.encodeCall(WETHMock.withdraw, (value)));
 
         bool success =
-            lotus.takeAction(BBCEncoder.encodeWithdrawWETH(canFail, address(weth), value));
+            lotus.takeAction(BBCEncoder.encodeWithdrawWETH(canFail, value));
 
         assertTrue(success);
     }
@@ -1936,7 +1945,7 @@ contract LotusRouterTest is Test {
         weth.setShouldThrow(true);
 
         bool success =
-            lotus.takeAction(BBCEncoder.encodeWithdrawWETH(canFail, address(weth), value));
+            lotus.takeAction(BBCEncoder.encodeWithdrawWETH(canFail, value));
 
         assertFalse(success);
     }
@@ -1949,7 +1958,7 @@ contract LotusRouterTest is Test {
         }
 
         bool success =
-            lotus.takeAction(BBCEncoder.encodeWithdrawWETH(canFail, address(weth), value));
+            lotus.takeAction(BBCEncoder.encodeWithdrawWETH(canFail, value));
 
         assertEq(success, canFail || !shouldThrow);
     }
@@ -2253,8 +2262,313 @@ contract LotusRouterTest is Test {
     }
 
     function testRoute1() public {
-        // 直接调用 lotus 合约，发送 0x1234 数据触发 fallback 函数
-        (bool success, bytes memory result) = address(lotus).call(hex"020014de719ea67d9d52ba0b2038c96279f8d87da884d80601da204b276a00146431be30788d8bbe24d992d871d3e618dea17233000000650300146431be30788d8bbe24d992d871d3e618dea172330412341234010705ef97cd4c0ff40705ef97cd4c0ff400000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214de719ea67d9d52ba0b2038c96279f8d87da884d80701481ab3558938");
-        
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22739116
+        // v3->v2
+        bytes memory data = hex"03001416b70f44719b227278a2dc1122e8106cc929ecd11460a39010e4892b862d1bb6bdde908215ac5af6f3010713ff5f798bcc70000000006d02001460a39010e4892b862d1bb6bdde908215ac5af6f3071475e59c3dbfef00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc21416b70f44719b227278a2dc1122e8106cc929ecd10713ff5f798bcc70";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
     }
+
+    function testRoute2() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22744461
+        // v2->v3
+        bytes memory data = hex"020014caa004418eb42cdf00cb057b7c9e28f0ffd840a50906d2418020d00186a100145615deb798bb3e4dfa0139dfa1b3d433cc23b72f000000a6030014b09c5dad762df413d5fc677f03400d3a3b9993a1145615deb798bb3e4dfa0139dfa1b3d433cc23b72f010906d2418020d00186a100000000360600142a3bff78b79a009976eea096a51a948a3dc00e3414b09c5dad762df413d5fc677f03400d3a3b9993a10906d2418020d00186a1060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214caa004418eb42cdf00cb057b7c9e28f0ffd840a5071b27c3b9de2027";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute3() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22744461
+        // v3->v2
+        bytes memory data = hex"030014084b5191bd08412952337b1108b6e5942418928f1459e7bee6374a3f6ecb33180ece978fd4f2b7cea200071858e394356a36000000006d02001459e7bee6374a3f6ecb33180ece978fd4f2b7cea20007188fb3de483307145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214084b5191bd08412952337b1108b6e5942418928f071858e394356a36";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute4() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22744461
+        bytes memory data = hex"030014e092769bc1fa5262d4f48353f90890dcc339bf80145615deb798bb3e4dfa0139dfa1b3d433cc23b72f000701481ab355893800000000bd04001439d5313c3750140e5042887413ba8aa6145a9bd214c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20027100000c814ce90a69d3daee08fc86662acd93f20d161c940440107fe665a5fed3d69000000003406001439d5313c3750140e5042887413ba8aa6145a9bd214c8eaf20ce476be72be3548f3e57e8fa129c0a105073071e1213bbe46060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214e092769bc1fa5262d4f48353f90890dcc339bf800701481ab3558938";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+
+    function unlockCallback(bytes calldata rawData) external returns (bytes memory) {
+        console.log("here");
+
+        console.logBytes(rawData);
+
+
+        //swap
+        // _swap _settle_all _take
+
+        // 0. swap
+        // _settle 逻辑
+        // 1. 先sync
+        // 2. transfer
+        // 3. settle
+
+
+
+        // swap
+        (bool x, bytes memory returnData )= address(0x000000000004444c5dc75cB358380D2e3dE08A90).call(rawData);
+
+        (int256 delta) = abi.decode(returnData, (int256));
+        console.log( BalanceDelta.wrap(delta).amount0());
+        console.log( BalanceDelta.wrap(delta).amount1());
+
+        // //settle 支付需要的token
+        // bytes memory takePayload = abi.encodeWithSelector(0x0b0d9c09,
+        // 0x39D5313C3750140E5042887413bA8AA6145a9bd2, address(this),
+        // uint256(int256(    BalanceDelta.wrap(delta).amount0()))
+        // );
+        // address(0x000000000004444c5dc75cB358380D2e3dE08A90).call(takePayload);
+        
+        // bytes memory syncPayload = abi.encodeWithSelector(0xa5841194, 0x39D5313C3750140E5042887413bA8AA6145a9bd2);
+        // address(0x000000000004444c5dc75cB358380D2e3dE08A90).call(syncPayload);
+
+        // 1. sync 
+        bytes memory syncPayload = abi.encodeWithSelector(0xa5841194, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        address(0x000000000004444c5dc75cB358380D2e3dE08A90).call(syncPayload);
+
+        // 2. transfer
+        IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).transfer(0x000000000004444c5dc75cB358380D2e3dE08A90, 
+            uint256( -int256(BalanceDelta.wrap(delta).amount1()))
+        );
+
+
+        // 3. settle
+        // settle 是指用 sender 结算， 也可用 settleFor 结算支付
+        bytes memory settlePayload = abi.encodeWithSelector(0x11da60b4);
+        address(0x000000000004444c5dc75cB358380D2e3dE08A90).call(settlePayload);
+
+
+        // 4. take
+        bytes memory takePayload = abi.encodeWithSelector( 0x0b0d9c09,  0x44ff8620b8cA30902395A7bD3F2407e1A091BF73, 
+        address(this), uint256(uint128(BalanceDelta.wrap(delta).amount0())));
+        address(0x000000000004444c5dc75cB358380D2e3dE08A90).call(takePayload);
+
+    }
+
+
+
+    function testUniV4Swap() public {
+        uint256 amount = 1000 ether;
+        vm.deal(address(this), 1000 ether);
+
+
+        IWETH weth = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+        weth.deposit{value: amount}();
+        weth.approve(0x000000000004444c5dc75cB358380D2e3dE08A90, 100 ether);
+
+        bytes memory empty = new bytes(0);
+
+        bytes memory swapPayload = abi.encodeWithSelector(0xf3cd914c,
+         0x44ff8620b8cA30902395A7bD3F2407e1A091BF73,
+        0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
+        10000,200,0,
+        false,
+        0x113, //17969443
+        // 4295128739+1,
+        1461446703485210103287273052203988822378723970342-1,
+        empty);
+
+
+        bytes memory payload = abi.encodeWithSelector(0x48c89491, swapPayload);
+
+        address(0x000000000004444c5dc75cB358380D2e3dE08A90).call(payload);
+
+    }
+
+    function testRoute5() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22747184
+        // v3->v3
+        bytes memory data = hex"030014e0554a476a092703abdb3ef35c80e0d76d32939f145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00080d0a96cd9f634c93000000009e03001488e6a0c2ddd26feeb64f039a2c41296fcb3f5640145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0105008743490c0000000031060014a0b86991c6218b36c1d19d4a2e9eb0ce3606eb481488e6a0c2ddd26feeb64f039a2c41296fcb3f5640048743490c060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214e0554a476a092703abdb3ef35c80e0d76d32939f080d0a96cd9f634c93";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute6() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22747184
+        // v2->v3
+        bytes memory data = hex"020014b011eeaab8bf0c6de75510128da95498e4b7e67f0905598949efebf14d8c00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f000000a6030014ac4b3dacb91461209ae9d41ec517c2b9cb1b7daf145615deb798bb3e4dfa0139dfa1b3d433cc23b72f010905598949efebf14d8c00000000360600144d224452801aced8b2f0aebe155379bb5d59438114ac4b3dacb91461209ae9d41ec517c2b9cb1b7daf0905598949efebf14d8c060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214b011eeaab8bf0c6de75510128da95498e4b7e67f07579fe833fc6420";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute7() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22760684
+        // v3->v3
+        bytes memory data = hex"0300144585fe77225b41b697c938b018e2ac67ac5a20c0145615deb798bb3e4dfa0139dfa1b3d433cc23b72f000800b55f274eb1ffe4000000009a030014e6ff8b9a37b0fab776134636d9981aa778c4e718145615deb798bb3e4dfa0139dfa1b3d433cc23b72f010301b93900000000300600142260fac5e5542a773aa44fbcfedf7c193bc2c59914e6ff8b9a37b0fab776134636d9981aa778c4e7180301b939060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2144585fe77225b41b697c938b018e2ac67ac5a20c007b55f274eb1ffe4";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute8() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22760684
+        // v2->v4
+        bytes memory data = hex"03001407aa6584385cca15c2c6e13a5599ffc2d177e33b1427fa67302c513f5512bbfa5065800c2d7b3871f4000710d02739ba00c2000000006d02001427fa67302c513f5512bbfa5065800c2d7b3871f4000711a2f7f836fe0b145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc21407aa6584385cca15c2c6e13a5599ffc2d177e33b0710d02739ba00c2";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute9() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22760684
+        // v2->v4
+        bytes memory data = hex"03001498409d8ca9629fbe01ab1b914ebf304175e384c81460031819a16266d896268cfea5d5be0b6c2b5d75010712605a1c8c0c50000000008d02001460031819a16266d896268cfea5d5be0b6c2b5d7507127efd492fb30700145615deb798bb3e4dfa0139dfa1b3d433cc23b72f000000200000000000000000000000000000000000000000000000000000000000000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc21498409d8ca9629fbe01ab1b914ebf304175e384c80712605a1c8c0c50";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+
+    function testRoute10() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //success @22821145
+        // v2->v2->v2
+        bytes memory data = hex"02001492ad5f399a278754637d84e9cba7cf405c901b9500091df65e087161d22100145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0000010b0300144910c39f3eff8c54cf88d2ca384fe30609cb4d39145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00091df65e087161d221000000000036060014d5930c307d7395ff807f2921f12c5eb82131a789144910c39f3eff8c54cf88d2ca384fe30609cb4d39091df65e087161d22100030014a276d842091a84ff99352e3f454760e9f7a617eb145615deb798bb3e4dfa0139dfa1b3d433cc23b72f010303a2c50000000030060014a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4814a276d842091a84ff99352e3f454760e9f7a617eb0303a2c5060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc21492ad5f399a278754637d84e9cba7cf405c901b95065af3107a4000";
+
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+
+        address(lotus).call(payload);
+
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute11() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //v3->v3->v2
+        //@22822327
+        bytes memory data = hex"0300141d702a07379b1a585eff05cd5c8a2e64494672db145615deb798bb3e4dfa0139dfa1b3d433cc23b72f01070a7cd495b8b0d100000000dd03001496c12209c1130fc16c432978c45f7f6b424ef18d140d4a11d5eeaac28ec3f61d100daf4d40471f185200084f01930ef6e4e7f80000000035060014f34ca6b7fe3d6b1c8635a6bf2bd7bdd252f164261496c12209c1130fc16c432978c45f7f6b424ef18d084f01930ef6e4e7f80200140d4a11d5eeaac28ec3f61d100daf4d40471f1852070a8ab5e404d61c00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2141d702a07379b1a585eff05cd5c8a2e64494672db070a7cd495b8b0d1";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute12() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //v3->v2->v2
+        //@22822337
+        bytes memory data = hex"030014bfba6254831605a6bfa1d6df1e4b85a22c5061a9145ad7452ceafdaeb0936507d5bb5890964ef56bd3000712605a1c8c0c5000000000a20200145ad7452ceafdaeb0936507d5bb5890964ef56bd30003c3d48214b4e16d0168e52d35cacd2c6185b44281ec28c9dc00000000020014b4e16d0168e52d35cacd2c6185b44281ec28c9dc00071278d6e2500a08145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214bfba6254831605a6bfa1d6df1e4b85a22c5061a90712605a1c8c0c50";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute13() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        //v3->v2->v2
+        //@22822337
+        bytes memory data = hex"030014a3f558aebaecaf0e11ca4b2199cc5ed341edfd74145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0008ee919b7f005f32e900000001070600145a98fcbea516cf06857215779fd812ca3bef1b32146edca62d3c6210e2a03509907ce1f3671d3e767908116e6480ffa0cd170200146edca62d3c6210e2a03509907ce1f3671d3e767900030e74c9145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014dac17f958d2ee523a2206206994597c13d831ec71417c1ae82d99379240059940093762c5e4539aba5030e74c902001417c1ae82d99379240059940093762c5e4539aba507015633237f8f8f00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214a3f558aebaecaf0e11ca4b2199cc5ed341edfd740701481ab3558938";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute14() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        // 222 ok
+        //@22851387
+        bytes memory data = hex"020014fb4492a1cd2a28d08b0b2a3ffa567342ea93776f040f0c3ce700145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000103060014a3d4bee77b05d4a0c943877558ce21a763c4fa29143aa6ba6035caea853e0e4ec8d271c9ebf1246e26040f0c3ce70200143aa6ba6035caea853e0e4ec8d271c9ebf1246e26030e58ae00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4814b4e16d0168e52d35cacd2c6185b44281ec28c9dc030e58ae020014b4e16d0168e52d35cacd2c6185b44281ec28c9dc00070151fbf71d90d0145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214fb4492a1cd2a28d08b0b2a3ffa567342ea93776f0701481ab3558938";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute15() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        // 233  ok
+        //@22851692
+        bytes memory data = hex"020014d3d2e2692501a5c9ca623199d38826e513033a17077f965989afc4cd00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000107030014d0fc8ba7e267f2bc56044a7715a489d851dc6d78145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0103fc2cf000000000340600141f9840a85d5af5bf1d1762f925bdaddc4201f98414d0fc8ba7e267f2bc56044a7715a489d851dc6d78077f965989afc4cd030014a276d842091a84ff99352e3f454760e9f7a617eb145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0107fed8f93628856e0000000030060014a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4814a276d842091a84ff99352e3f454760e9f7a617eb0303d310060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214d3d2e2692501a5c9ca623199d38826e513033a17065af3107a4000";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute16() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        // 223 ok
+        //@22851692
+        bytes memory data = hex"020014d3d2e2692501a5c9ca623199d38826e513033a17077f965989afc4cd00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f000001060600141f9840a85d5af5bf1d1762f925bdaddc4201f98414ebfb684dd2b01e698ca6c14f10e4f289934a54d6077f965989afc4cd020014ebfb684dd2b01e698ca6c14f10e4f289934a54d6000303cab4145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000030014a276d842091a84ff99352e3f454760e9f7a617eb145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0107fed8f93628856e0000000030060014a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4814a276d842091a84ff99352e3f454760e9f7a617eb0303cab4060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214d3d2e2692501a5c9ca623199d38826e513033a17065af3107a4000";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+
+    function testRoute17() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        // 322 ok
+        //@22851692
+        bytes memory data = hex"0300146fb092521191ab1ec60c83ae9e71dfafb25da9d6145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0109e40906d17955b8c3e40000000108060014e636f94a71ec52cc61ef21787ae351ad832347b714e5009b028aa21aec7b9086f839e428aa77b71c54091bf6f92e86aa473c1c020014e5009b028aa21aec7b9086f839e428aa77b71c540337253c00145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014dac17f958d2ee523a2206206994597c13d831ec7140d4a11d5eeaac28ec3f61d100daf4d40471f18520337253c0200140d4a11d5eeaac28ec3f61d100daf4d40471f1852070516771b2b96c800145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2146fb092521191ab1ec60c83ae9e71dfafb25da9d607050b8bb8f062aa";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+    function testRoute18() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        // 332 ok
+        //@22851692
+        bytes memory data = hex"0300148d4e39d4380392994f50e2c8413ddffe7e720a7b145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0009e783a189fa14a4141400000001090300148119d42124a5a55ef755dcc973bf3c7069f8181d145615deb798bb3e4dfa0139dfa1b3d433cc23b72f0103f1b1c20000000036060014b56aaac80c931161548a49181c9e000a19489c44148119d42124a5a55ef755dcc973bf3c7069f8181d09187c5e7605eb5bebec060014dac17f958d2ee523a2206206994597c13d831ec7140d4a11d5eeaac28ec3f61d100daf4d40471f1852030e4e3e0200140d4a11d5eeaac28ec3f61d100daf4d40471f1852070151bd3052a1b600145615deb798bb3e4dfa0139dfa1b3d433cc23b72f00000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2148d4e39d4380392994f50e2c8413ddffe7e720a7b0701481ab3558938";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+        function testRoute19() public {
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+        // 332 ok
+        //@22873544
+        bytes memory data = hex"020014a27e5775317f3f301b5b08babcde0a20feae7f09000902f0ffba2b89cc56e814fce863461c1e27ca10a19939b8426bb8f4d61de200000108060014eeeeeb57642040be42185f49c52f7e9b38f8eeee141cedaddcd6ab52e78902b734a9cf0137856de70e0902f0ffba2b89cc56e80200141cedaddcd6ab52e78902b734a9cf0137856de70e031b72ab0014fce863461c1e27ca10a19939b8426bb8f4d61de200000000060014a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4814b4e16d0168e52d35cacd2c6185b44281ec28c9dc031b72ab020014b4e16d0168e52d35cacd2c6185b44281ec28c9dc0007027f8791ec4ca114fce863461c1e27ca10a19939b8426bb8f4d61de200000000060014c02aaa39b223fe8d0a0e5c4f27ead9083c756cc214a27e5775317f3f301b5b08babcde0a20feae7f090702708c3ee7a4bd";
+        bytes memory payload = abi.encodePacked(uint32(0x19ff8034), data);
+        address(lotus).call(payload);
+        console.log(IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).balanceOf(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f));
+    }
+
+
 }

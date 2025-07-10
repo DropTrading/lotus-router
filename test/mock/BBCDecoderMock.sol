@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import { BytesCalldata } from "src/types/BytesCalldata.sol";
 import { Ptr } from "src/types/PayloadPointer.sol";
@@ -130,26 +130,26 @@ contract BBCDecoderMock {
             // ptr := add(0,encoded.offset)
         }
 
-        (, canFail, token0, token1, fee, tickSpacing, hook, zeroForOne, amountSpecified, sqrtPriceLimitX96, packedData) =
-            ptr.decodeSwapUniV4();
+        // (, canFail, token0, token1, fee, tickSpacing, hook, zeroForOne, amountSpecified, sqrtPriceLimitX96, packedData) =
+        //     ptr.decodeSwapUniV4();
 
-        uint32 lenPtr = BytesCalldata.unwrap(packedData);
-        assembly("memory-safe") {
-            let fmp := mload(0x40)
+        // uint32 lenPtr = BytesCalldata.unwrap(packedData);
+        // assembly("memory-safe") {
+        //     let fmp := mload(0x40)
 
-            data := fmp
+        //     data := fmp
 
-            let len := shr(0xe0, calldataload(lenPtr))
-            mstore(fmp, len)
+        //     let len := shr(0xe0, calldataload(lenPtr))
+        //     mstore(fmp, len)
 
-            fmp := add(fmp, 0x20)
+        //     fmp := add(fmp, 0x20)
 
-            calldatacopy(fmp, add(packedData, 0x04), len)
+        //     calldatacopy(fmp, add(packedData, 0x04), len)
 
-            fmp := add(fmp, len)
+        //     fmp := add(fmp, len)
 
-            mstore(0x40, fmp)
-        }
+        //     mstore(0x40, fmp)
+        // }
 
     }
 
@@ -300,7 +300,7 @@ contract BBCDecoderMock {
             ptr := add(0x01, encoded.offset)
         }
 
-        (, canFail, weth, value) = ptr.decodeDepositWETH();
+        (, canFail, value) = ptr.decodeDepositWETH();
     }
 
     function decodeWithdrawWETH(
@@ -313,7 +313,7 @@ contract BBCDecoderMock {
             ptr := add(0x01, encoded.offset)
         }
 
-        (, canFail, weth, value) = ptr.decodeWithdrawWETH();
+        (, canFail, value) = ptr.decodeWithdrawWETH();
     }
 
     function decodeDynCall(bytes calldata encoded)
